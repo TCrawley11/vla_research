@@ -11,3 +11,10 @@ wheels/
 
 .ipynb_checkpoints/
 Carla Data Collection Manual.pdf
+
+# ignore dataset
+dataset/
+output.csv
+
+# ignore progress tracking files
+journal/
