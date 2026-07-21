@@ -3,5 +3,25 @@ name = "vla-research"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []
+requires-python = "==3.11.*"
+dependencies = [
+    "carla",
+    "h5py>=3.16.0",
+    "numpy>=2.4.6",
+    "pydantic>=2.13.4",
+    "pyyaml>=6.0.3",
+]
+
+[tool.uv.sources]
+# CARLA ships its client library as a local wheel, not on PyPI. Machine-specific
+# path; acceptable for a single-machine research repo.
+carla = { path = "/home/tygo/CARLA_0.9.16/PythonAPI/carla/dist/carla-0.9.16-cp311-cp311-manylinux_2_31_x86_64.whl" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

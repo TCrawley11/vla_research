@@ -1,0 +1,16 @@
+# Rarely-changed defaults. Scenario files extend this via `extends` and win on
+# conflicts. See `python -m carla_data_pipeline man config` for every field.
+carla:
+  host: localhost
+  port: 2000
+  tm_port: 8000
+  timeout_sec: 10.0
+
+capture:
+  raw_fps: 30
+  sample_fps: 5
+  clip_sec: 3.0
+  sample_period_sec: 1.0
+  horizon_sec: 3.0
+
+camera_spec: camera_spec/six_cam_1600x900.yaml

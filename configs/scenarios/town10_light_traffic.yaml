@@ -1,0 +1,19 @@
+# Example scenario: Town10, light background traffic, 2 minutes.
+extends: ../base.yaml
+
+scenario:
+  map_name: Town10HD_Opt
+
+seed: 42
+
+ego:
+  blueprint: vehicle.tesla.model3
+
+traffic:
+  enabled: true
+  num_vehicles: 20
+  num_walkers: 10
+
+capture:
+  stop:
+    duration_sec: 120

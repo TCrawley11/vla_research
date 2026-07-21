@@ -12,9 +12,13 @@ wheels/
 .ipynb_checkpoints/
 Carla Data Collection Manual.pdf
 
-# ignore dataset
+# ignore dataset (legacy PNG-per-frame layout)
 dataset/
 output.csv
+
+# data captures: track structure + README, ignore the large files themselves
+data/runs/*
+!data/runs/.gitkeep
 
 # ignore progress tracking files
 journal/

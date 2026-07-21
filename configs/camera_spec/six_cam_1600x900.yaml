@@ -1,0 +1,27 @@
+# The 6-camera rig (ported from the notebook's camera_specs).
+# Mounting is in the vehicle frame, CARLA convention: x forward, y right, z up,
+# meters/degrees. back_right uses a wider 110 fov, the rest use 70.
+cameras:
+  - name: FRONT
+    fov: 70
+    location: {z: 1.5}
+  - name: FRONT_LEFT
+    fov: 70
+    location: {z: 1.5}
+    rotation: {yaw: -55}
+  - name: FRONT_RIGHT
+    fov: 70
+    location: {z: 1.5}
+    rotation: {yaw: 55}
+  - name: BACK
+    fov: 70
+    location: {z: 1.5}
+    rotation: {yaw: 180}
+  - name: BACK_LEFT
+    fov: 70
+    location: {z: 1.5}
+    rotation: {yaw: -120}
+  - name: BACK_RIGHT
+    fov: 110
+    location: {z: 1.5}
+    rotation: {yaw: 120}
