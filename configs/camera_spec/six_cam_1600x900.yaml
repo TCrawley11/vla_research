@@ -15,7 +15,9 @@ cameras:
     rotation: {yaw: 55}
   - name: BACK
     fov: 70
-    location: {z: 1.5}
+    # Higher than the front cams so the view clears the ego roofline; the real
+    # nuScenes rig also mounts its back cameras ~5-9cm above the front ones.
+    location: {z: 1.6}
     rotation: {yaw: 180}
   - name: BACK_LEFT
     fov: 70
