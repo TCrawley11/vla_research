@@ -38,6 +38,10 @@ TURN_W = 0.15   # rad/s (~8.6 deg/s); above this magnitude -> turning
 # net yaw change over the future horizon separating straight from a curve
 CURVE_YAW = 0.30  # rad (~17 deg)
 
+# final forward displacement over the horizon below which the trajectory is
+# STOPPING (car-scale analogue of the instruction document's 0.05 m lab rule)
+STOP_TRAJ_DIST = 1.0  # m
+
 # fixed id mapping per data/README.md: 0..5 in this order
 ACTION_LABELS = ["STOP", "LEFT_TURN", "RIGHT_TURN", "SLOW_FORWARD", "FORWARD", "UNKNOWN"]
 
@@ -59,16 +63,15 @@ def action_label_from_velocity(v, w, stop_v=STOP_V, slow_v=SLOW_V, turn_w=TURN_W
     return "FORWARD"
 
 
-def select_key_indices(n_frames, raw_fps, sample_fps, clip_sec,
+def select_key_indices(n_frames, raw_fps, clip_sec,
                        sample_period_sec, horizon_sec):
     """Indices into the N axis that qualify as key frames.
 
     A key frame needs a full half-clip of past frames and a full future
     horizon ahead of it; keys are spaced sample_period_sec apart.
     """
-    step = raw_fps // sample_fps
     clip_half = round(clip_sec / 2 * raw_fps)
-    horizon_frames = round(horizon_sec * sample_fps) * step
+    horizon_frames = round(horizon_sec * raw_fps)
     period = round(sample_period_sec * raw_fps)
     lookahead = max(clip_half, horizon_frames)
     keys = np.arange(clip_half, n_frames, period)
@@ -82,14 +85,15 @@ def clip_indices(key_index, raw_fps, sample_fps, clip_sec):
     return key_index + np.arange(-n_side, n_side + 1) * step
 
 
-def future_indices(key_index, raw_fps, sample_fps, horizon_sec):
-    """The T future frame indices at sample_fps, strictly after the key frame.
+def future_indices(key_index, raw_fps, horizon_sec, waypoint_period_sec):
+    """The T future frame indices on the waypoint grid, strictly after the key.
 
-    The shift indexes into the raw-fps log, not the built samples: T steps
-    through built samples would span T*sample_period seconds, not horizon_sec.
+    Waypoints are spaced waypoint_period_sec apart (0.5 s per the instruction
+    document -> 6 per 3 s horizon), indexed into the raw-fps log where every
+    grid point lands exactly on a frame (validated by the config schema).
     """
-    step = raw_fps // sample_fps
-    t = round(horizon_sec * sample_fps)
+    step = round(waypoint_period_sec * raw_fps)
+    t = round(horizon_sec / waypoint_period_sec)
     return key_index + np.arange(1, t + 1) * step
 
 
@@ -104,14 +108,21 @@ def waypoints_to_ego_frame(points_xy, key_xy, key_yaw):
                      -d[:, 0] * s + d[:, 1] * c], axis=1)
 
 
-def trajectory_type(yaw_key, yaw_end, curve_yaw=CURVE_YAW):
-    """straight / left_curve / right_curve from the net yaw change over the horizon."""
+def trajectory_type(yaw_key, yaw_end, forward_dist,
+                    curve_yaw=CURVE_YAW, stop_dist=STOP_TRAJ_DIST):
+    """STOPPING / LEFT_CURVE / RIGHT_CURVE / STRAIGHT for one sample.
+
+    STOPPING when the final ego-frame forward displacement over the horizon is
+    negligible; otherwise classified by net yaw change over the horizon.
+    """
+    if abs(forward_dist) < stop_dist:
+        return "STOPPING"
     net = (yaw_end - yaw_key + math.pi) % (2 * math.pi) - math.pi
     if net > curve_yaw:
-        return "left_curve"
+        return "LEFT_CURVE"
     if net < -curve_yaw:
-        return "right_curve"
-    return "straight"
+        return "RIGHT_CURVE"
+    return "STRAIGHT"
 
 
 def build_samples(h5_path):
@@ -125,6 +136,8 @@ def build_samples(h5_path):
         clip_sec = float(f.attrs["clip_sec"])
         sample_period_sec = float(f.attrs["sample_period_sec"])
         horizon_sec = float(f.attrs["horizon_sec"])
+        # runs captured before the attr existed default to the document's 0.5 s
+        wp_period = float(f.attrs.get("waypoint_period_sec", 0.5))
 
         frame_id = f["telemetry/frame_id"][:]
         data = f["telemetry/data"][:]
@@ -133,16 +146,16 @@ def build_samples(h5_path):
         col = {name: data[:, i] for i, name in enumerate(columns)}
         n_frames = len(frame_id)
 
-        keys = select_key_indices(n_frames, raw_fps, sample_fps, clip_sec,
+        keys = select_key_indices(n_frames, raw_fps, clip_sec,
                                   sample_period_sec, horizon_sec)
         s = len(keys)
         log.info("%s: %d frames -> %d samples", h5_path.name, n_frames, s)
 
         k_clip = 2 * int(clip_sec / 2 * sample_fps) + 1
-        t_horizon = round(horizon_sec * sample_fps)
+        t_horizon = round(horizon_sec / wp_period)
         clips = np.stack([clip_indices(k, raw_fps, sample_fps, clip_sec) for k in keys]) \
             if s else np.zeros((0, k_clip), dtype=np.int64)
-        futures = np.stack([future_indices(k, raw_fps, sample_fps, horizon_sec) for k in keys]) \
+        futures = np.stack([future_indices(k, raw_fps, horizon_sec, wp_period) for k in keys]) \
             if s else np.zeros((0, t_horizon), dtype=np.int64)
 
         for name in ("sample_index", "trajectory", "action"):
@@ -155,6 +168,10 @@ def build_samples(h5_path):
         si.create_dataset("key_index", data=keys.astype(np.int32))
         si.create_dataset("key_frame_id", data=frame_id[keys].astype(np.int32))
         si.create_dataset("key_timestamp", data=col["sim_time"][keys])
+        si.create_dataset("timestamp_start", data=col["sim_time"][clips[:, 0]]
+                          if s else np.zeros(0))
+        si.create_dataset("timestamp_end", data=col["sim_time"][clips[:, -1]]
+                          if s else np.zeros(0))
         si.create_dataset("clip_start_index", data=clips[:, 0].astype(np.int32)
                           if s else np.zeros(0, np.int32))
         si.create_dataset("clip_end_index", data=clips[:, -1].astype(np.int32)
@@ -171,7 +188,8 @@ def build_samples(h5_path):
             waypoints_to_ego_frame(map_frame[i], xy[k], col["yaw"][k])
             for i, k in enumerate(keys)
         ]) if s else np.zeros((0, t_horizon, 2))
-        types = [trajectory_type(col["yaw"][k], col["yaw"][futures[i, -1]])
+        types = [trajectory_type(col["yaw"][k], col["yaw"][futures[i, -1]],
+                                 ego_frame[i][-1, 0])
                  for i, k in enumerate(keys)]
 
         tr = f.create_group("trajectory")

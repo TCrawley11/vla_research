@@ -12,5 +12,6 @@ capture:
   clip_sec: 3.0
   sample_period_sec: 1.0
   horizon_sec: 3.0
+  waypoint_period_sec: 0.5
 
 camera_spec: camera_spec/six_cam_1600x900.yaml

@@ -15,9 +15,12 @@ cameras:
     rotation: {yaw: 55}
   - name: BACK
     fov: 70
-    # Higher than the front cams so the view clears the ego roofline; the real
-    # nuScenes rig also mounts its back cameras ~5-9cm above the front ones.
-    location: {z: 1.6}
+    # Mounted at the rear of the roof (nuScenes-style), not the vehicle
+    # centre: from x=0 the camera looks across the whole rear half of the car
+    # and the ego body fills ~a third of the frame. x=-1.5 cuts the rear blind
+    # zone to ~4.4 m while staying physically mountable (z=1.6 keeps the
+    # nuScenes back-cam-slightly-higher convention).
+    location: {x: -1.5, z: 1.6}
     rotation: {yaw: 180}
   - name: BACK_LEFT
     fov: 70

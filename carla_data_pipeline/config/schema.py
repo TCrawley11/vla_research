@@ -125,12 +125,25 @@ class CaptureConfig(StrictModel):
     clip_sec: float = Field(3.0, gt=0, description="Sample clip length, centred on the key frame.")
     sample_period_sec: float = Field(1.0, gt=0, description="One sample per this much sim time.")
     horizon_sec: float = Field(3.0, gt=0, description="Future trajectory horizon after the key frame.")
+    waypoint_period_sec: float = Field(
+        0.5, gt=0, description="Future waypoint spacing in seconds; "
+                               "horizon_sec / this = waypoints per sample.")
 
     @model_validator(mode="after")
     def _consistent(self):
         if self.raw_fps % self.sample_fps != 0:
             raise ValueError(f"raw_fps ({self.raw_fps}) must be divisible by "
                              f"sample_fps ({self.sample_fps})")
+        wp_frames = self.waypoint_period_sec * self.raw_fps
+        if abs(wp_frames - round(wp_frames)) > 1e-9 or round(wp_frames) < 1:
+            raise ValueError(
+                f"waypoint_period_sec ({self.waypoint_period_sec}) must be a whole "
+                f"number of frames at raw_fps {self.raw_fps}")
+        n_wp = self.horizon_sec / self.waypoint_period_sec
+        if abs(n_wp - round(n_wp)) > 1e-9:
+            raise ValueError(
+                f"horizon_sec ({self.horizon_sec}) must be an integer multiple of "
+                f"waypoint_period_sec ({self.waypoint_period_sec})")
         min_sec = self.clip_sec / 2 + self.horizon_sec
         run_sec = (self.stop.duration_sec if self.stop.duration_sec is not None
                    else self.stop.num_frames / self.raw_fps)

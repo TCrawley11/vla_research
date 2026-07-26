@@ -1,0 +1,17 @@
+# Town04 (highway loop with a small town), light traffic, 30-second scene.
+extends: ../base.yaml
+
+scenario:
+  map_name: Town04
+
+ego:
+  blueprint: vehicle.tesla.model3
+
+traffic:
+  enabled: true
+  num_vehicles: 20
+  num_walkers: 10
+
+capture:
+  stop:
+    duration_sec: 30

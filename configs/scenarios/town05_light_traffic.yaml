@@ -1,0 +1,17 @@
+# Town05 (urban grid with commercial buildings), light traffic, 30-second scene.
+extends: ../base.yaml
+
+scenario:
+  map_name: Town05
+
+ego:
+  blueprint: vehicle.tesla.model3
+
+traffic:
+  enabled: true
+  num_vehicles: 20
+  num_walkers: 10
+
+capture:
+  stop:
+    duration_sec: 30

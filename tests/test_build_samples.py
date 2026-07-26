@@ -17,6 +17,8 @@ def make_run(tmp_path, n_frames=400, run_id="run99"):
     data = np.stack([t, 5.0 * t, np.zeros(n_frames), np.zeros(n_frames),
                      np.full(n_frames, 5.0), np.zeros(n_frames)], axis=1)
     with h5py.File(path, "w") as f:
+        # deliberately no waypoint_period_sec attr: exercises the 0.5 s fallback
+        # used for runs captured before the attr existed
         f.attrs.update({"run_id": run_id, "raw_fps": RAW_FPS, "sample_fps": SAMPLE_FPS,
                         "clip_sec": 3.0, "sample_period_sec": 1.0, "horizon_sec": 3.0})
         tel = f.create_group("telemetry")
@@ -42,15 +44,20 @@ def test_round_trip(tmp_path):
         # window bounds are the first/last of the respective index arrays, inclusive
         assert f["sample_index/clip_start_index"][0] == 45 - 42
         assert f["sample_index/clip_end_index"][0] == 45 + 42
-        assert f["sample_index/future_start_index"][0] == 45 + 6
+        assert f["sample_index/timestamp_start"][0] == (45 - 42) / RAW_FPS
+        assert f["sample_index/timestamp_end"][0] == (45 + 42) / RAW_FPS
+        # 0.5 s waypoint grid: first future frame at key + 15, last at key + 90
+        assert f["sample_index/future_start_index"][0] == 45 + 15
         assert f["sample_index/future_end_index"][0] == 45 + 90
 
-        assert f["trajectory/future_waypoints_map_frame"].shape == (9, 15, 2)
+        assert f["trajectory/future_waypoints_map_frame"].shape == (9, 6, 2)
         ego = f["trajectory/future_waypoints_ego_frame"][:]
-        assert ego.shape == (9, 15, 2)
+        assert ego.shape == (9, 6, 2)
         assert np.allclose(ego[:, :, 1], 0, atol=1e-9)   # straight -> ego_y ~ 0
         assert np.all(np.diff(ego[0, :, 0]) > 0)          # moving forward
-        assert {t.decode() for t in f["trajectory/trajectory_type"][:]} == {"straight"}
+        # 5 m/s straight drive: waypoints every 0.5 s -> 2.5 m spacing
+        assert np.allclose(ego[0, :, 0], 2.5 * np.arange(1, 7))
+        assert {t.decode() for t in f["trajectory/trajectory_type"][:]} == {"STRAIGHT"}
 
         labels = [b.decode() for b in f["action/action_label"][:]]
         assert set(labels) == {"FORWARD"}
@@ -76,4 +83,4 @@ def test_too_short_run_yields_zero_samples(tmp_path):
     assert build_samples(path) == 0
     with h5py.File(path) as f:
         assert f["sample_index/key_index"].shape == (0,)
-        assert f["trajectory/future_waypoints_ego_frame"].shape == (0, 15, 2)
+        assert f["trajectory/future_waypoints_ego_frame"].shape == (0, 6, 2)

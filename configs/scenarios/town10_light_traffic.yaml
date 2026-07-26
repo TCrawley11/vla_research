@@ -1,10 +1,10 @@
-# Example scenario: Town10, light background traffic, 2 minutes.
+# Town10 (HD urban), light background traffic, 30-second scene.
+# No seed: each run draws one and records it in the sidecar; pin `seed: N`
+# here to reproduce a specific run.
 extends: ../base.yaml
 
 scenario:
   map_name: Town10HD_Opt
-
-seed: 42
 
 ego:
   blueprint: vehicle.tesla.model3
@@ -16,4 +16,4 @@ traffic:
 
 capture:
   stop:
-    duration_sec: 120
+    duration_sec: 30

@@ -27,8 +27,8 @@ def test_example_scenario_loads():
     cfg = load_collect_config(REPO / "configs/scenarios/town10_light_traffic.yaml")
     assert cfg.scenario.map_name == "Town10HD_Opt"
     assert cfg.capture.raw_fps == 30                # from base.yaml
-    assert cfg.capture.stop.duration_sec == 120     # scenario wins the merge
-    assert cfg.seed == 42
+    assert cfg.capture.stop.duration_sec == 30      # scenario wins the merge
+    assert cfg.seed is None                         # drawn per run, recorded in sidecar
     assert cfg.traffic.enabled and cfg.traffic.num_vehicles == 20
     assert [c.name for c in cfg.camera_spec.cameras] == [
         "FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]

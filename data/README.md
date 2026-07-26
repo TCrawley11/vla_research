@@ -56,6 +56,7 @@ fields), not by frame_id, so slicing a clip is a direct array slice.
 | `clip_sec` | float | sample clip length in seconds (3.0) |
 | `sample_period_sec` | float | one sample per this much sim time (1.0) |
 | `horizon_sec` | float | future trajectory horizon in seconds (3.0) |
+| `waypoint_period_sec` | float | future waypoint spacing in seconds (0.5); absent on runs captured before 2026-07-26, where it defaults to 0.5 at build time |
 | `seed` | int | resolved run seed (python/numpy/TM) |
 | `coordinate_convention` | str | `"ROS REP-103: x forward, y left, z up; yaw rad; +w = left"` |
 | `created_utc` | str | ISO-8601 capture start time |
@@ -87,6 +88,12 @@ fields), not by frame_id, so slicing a clip is a direct array slice.
     lane_width     (N,) float64         m
     lane_type      (N,) vlen str        e.g. 'Driving'
     lane_change    (N,) vlen str        e.g. 'Both', 'Right', 'NONE'
+    nearest_landmark          (N,) vlen str   name of the closest OpenDRIVE
+                                              landmark (signal/sign); '' if the
+                                              map defines none
+    distance_to_next_turn_m   (N,) float64    distance along the lane to the
+                                              next junction, clamped to 200;
+                                              0.0 while inside a junction
 
 /camera_config/                         one entry per camera, same order everywhere
     camera_names                (6,) vlen str      'FRONT', 'FRONT_LEFT', ...
@@ -101,18 +108,22 @@ fields), not by frame_id, so slicing a clip is a direct array slice.
     key_index           (S,) int32      index into the N axis
     key_frame_id        (S,) int32      /telemetry/frame_id at key_index
     key_timestamp       (S,) float64    sim seconds at the key frame
+    timestamp_start     (S,) float64    sim seconds at the first clip frame
+    timestamp_end       (S,) float64    sim seconds at the last clip frame
     clip_start_index    (S,) int32      first entry of clip_frame_indices (inclusive)
     clip_end_index      (S,) int32      last entry of clip_frame_indices (inclusive)
-    future_start_index  (S,) int32      first future frame: key_index + step (inclusive)
-    future_end_index    (S,) int32      last future frame: key_index + T*step (inclusive)
+    future_start_index  (S,) int32      first future frame: key + waypoint period (inclusive)
+    future_end_index    (S,) int32      last future frame: key + horizon (inclusive)
     clip_frame_indices  (S, K) int32    the K clip frames subsampled at 5 fps
                                         (K = 15 for a 3 s clip)
 
-/trajectory/                            future horizon after the key frame, at sample_fps
+/trajectory/                            future horizon after the key frame, one
+                                        waypoint per waypoint_period_sec
     future_waypoints_map_frame  (S, T, 2) float64   (x, y) map frame
     future_waypoints_ego_frame  (S, T, 2) float64   (x, y) in the key frame's ego frame
-    trajectory_type             (S,) vlen str       e.g. 'straight', 'left_curve'
-                                                    (T = 15 for a 3 s horizon at 5 fps)
+    trajectory_type             (S,) vlen str       STRAIGHT / LEFT_CURVE /
+                                                    RIGHT_CURVE / STOPPING
+                                                    (T = 6 for a 3 s horizon at 0.5 s)
 
 /action/
     action_label   (S,) vlen str        STOP / LEFT_TURN / RIGHT_TURN /
@@ -135,6 +146,25 @@ State values follow the ROS convention (x forward, y left, yaw in rad,
 log time by `carla_data_pipeline/collect.py`. New signals are added by appending
 columns and extending `attrs["columns"]`; readers must look up columns by name,
 never by position.
+
+### Human-readable zones from `/map_context`
+
+The instruction document's `map_context.zone` uses hand-drawn semantic zones
+on a lab mat. CARLA runs keep the native OpenDRIVE identifiers (stable,
+exact, per-map) and derive the human-readable zone from them on demand:
+
+| human-readable zone | derived from |
+|---|---|
+| `intersection` | `is_junction == 1` |
+| `approaching_intersection` | `is_junction == 0` and `distance_to_next_turn_m < 20` |
+| `driving_lane` | `is_junction == 0`, `lane_type == 'Driving'` |
+| `shoulder` / `parking` / `sidewalk` | `lane_type` of the same name (lowercased) |
+| `road_<road_id>` | `road_id`, when a stable segment name is needed |
+
+`lane_change` values map directly: `Both`/`Left`/`Right` = permitted lane-change
+directions, `NONE` = keep lane. `nearest_landmark` carries the closest signal
+or sign name (e.g. a traffic light pole), the analogue of the document's
+`nearest_landmark` example.
 
 ### Conventions carried over from the PNG layout
 

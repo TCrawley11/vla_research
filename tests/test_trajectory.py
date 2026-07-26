@@ -32,23 +32,29 @@ def test_left_turn_gives_positive_ego_y():
 
 
 def test_trajectory_type_thresholds():
-    assert trajectory_type(0.0, math.pi / 2) == "left_curve"
-    assert trajectory_type(0.0, -math.pi / 2) == "right_curve"
-    assert trajectory_type(0.0, 0.1) == "straight"
+    assert trajectory_type(0.0, math.pi / 2, 10.0) == "LEFT_CURVE"
+    assert trajectory_type(0.0, -math.pi / 2, 10.0) == "RIGHT_CURVE"
+    assert trajectory_type(0.0, 0.1, 10.0) == "STRAIGHT"
+
+
+def test_trajectory_type_stopping():
+    assert trajectory_type(0.0, 0.0, 0.3) == "STOPPING"
+    # a negligible forward displacement is STOPPING even if the yaw drifted
+    assert trajectory_type(0.0, math.pi / 2, 0.5) == "STOPPING"
 
 
 def test_trajectory_type_wraps_across_pi():
     # net change is +0.2 rad, not -2*pi + 0.2
-    assert trajectory_type(math.pi - 0.1, -math.pi + 0.1) == "straight"
+    assert trajectory_type(math.pi - 0.1, -math.pi + 0.1, 10.0) == "STRAIGHT"
 
 
 def test_key_selection_excludes_frames_without_full_horizon():
-    # step=6, clip_half=45, horizon=15*6=90 raw frames
-    keys = select_key_indices(400, RAW_FPS, SAMPLE_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)
+    # clip_half=45, horizon=3s*30fps=90 raw frames
+    keys = select_key_indices(400, RAW_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)
     assert keys[0] == 45
     assert list(keys) == list(range(45, 310, 30))  # last valid key: 285 (285+90 <= 399)
-    assert len(select_key_indices(136, RAW_FPS, SAMPLE_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)) == 1
-    assert len(select_key_indices(135, RAW_FPS, SAMPLE_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)) == 0
+    assert len(select_key_indices(136, RAW_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)) == 1
+    assert len(select_key_indices(135, RAW_FPS, CLIP_SEC, PERIOD_SEC, HORIZON_SEC)) == 0
 
 
 def test_clip_indices_symmetric_about_key():
@@ -60,9 +66,10 @@ def test_clip_indices_symmetric_about_key():
 
 
 def test_future_indices_strictly_after_key():
-    idx = future_indices(45, RAW_FPS, SAMPLE_FPS, HORIZON_SEC)
-    assert len(idx) == 15
-    assert idx[0] == 51 and idx[-1] == 135   # key + step .. key + T*step
+    # 0.5 s waypoint grid -> 6 waypoints, 15 raw frames apart
+    idx = future_indices(45, RAW_FPS, HORIZON_SEC, 0.5)
+    assert len(idx) == 6
+    assert idx[0] == 60 and idx[-1] == 135   # key + 0.5s .. key + 3.0s
 
 
 def test_action_labels():

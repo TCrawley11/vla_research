@@ -78,6 +78,7 @@ class RunWriter:
             "clip_sec": cfg.capture.clip_sec,
             "sample_period_sec": cfg.capture.sample_period_sec,
             "horizon_sec": cfg.capture.horizon_sec,
+            "waypoint_period_sec": cfg.capture.waypoint_period_sec,
             "seed": seed,
             "coordinate_convention": COORDINATE_CONVENTION,
             "created_utc": _utcnow(),
@@ -102,7 +103,8 @@ class RunWriter:
         for name, dt in [("road_id", np.int32), ("lane_id", np.int32),
                          ("section_id", np.int32), ("is_junction", np.uint8),
                          ("lane_width", np.float64), ("lane_type", str_dt),
-                         ("lane_change", str_dt)]:
+                         ("lane_change", str_dt), ("nearest_landmark", str_dt),
+                         ("distance_to_next_turn_m", np.float64)]:
             mc.create_dataset(name, shape=(0,), maxshape=(None,), dtype=dt)
 
         cams = cfg.camera_spec.cameras
@@ -156,16 +158,54 @@ def _telemetry_row(world, vehicle):
     return row, tf.location
 
 
-def _map_context_row(carla_map, location) -> dict:
+TURN_SEARCH_STEP_M = 2.0
+TURN_SEARCH_MAX_M = 200.0  # distance_to_next_turn_m is clamped here (no sentinel)
+
+
+def _landmark_index(carla_map):
+    """All map landmarks as (names, positions (N, 2)); map queries are local."""
+    landmarks = carla_map.get_all_landmarks()
+    names = [lm.name or f"landmark_{lm.id}" for lm in landmarks]
+    positions = np.array([[lm.transform.location.x, lm.transform.location.y]
+                          for lm in landmarks]) if landmarks else np.zeros((0, 2))
+    return names, positions
+
+
+def _distance_to_next_junction(wp) -> float:
+    """Distance along the lane to the first junction waypoint, clamped."""
+    if wp.is_junction:
+        return 0.0
+    dist, cur = 0.0, wp
+    while dist < TURN_SEARCH_MAX_M:
+        ahead = cur.next(TURN_SEARCH_STEP_M)
+        if not ahead:
+            return TURN_SEARCH_MAX_M
+        cur = ahead[0]
+        dist += TURN_SEARCH_STEP_M
+        if cur.is_junction:
+            return dist
+    return TURN_SEARCH_MAX_M
+
+
+def _map_context_row(carla_map, location, landmark_names, landmark_pos) -> dict:
+    if len(landmark_names):
+        d2 = ((landmark_pos[:, 0] - location.x) ** 2
+              + (landmark_pos[:, 1] - location.y) ** 2)
+        nearest = landmark_names[int(np.argmin(d2))]
+    else:
+        nearest = ""
     wp = carla_map.get_waypoint(location, project_to_road=True,
                                 lane_type=carla.LaneType.Driving)
     if wp is None:
         return {"road_id": -1, "lane_id": 0, "section_id": -1, "is_junction": 0,
-                "lane_width": 0.0, "lane_type": "NONE", "lane_change": "NONE"}
+                "lane_width": 0.0, "lane_type": "NONE", "lane_change": "NONE",
+                "nearest_landmark": nearest,
+                "distance_to_next_turn_m": TURN_SEARCH_MAX_M}
     return {"road_id": wp.road_id, "lane_id": wp.lane_id,
             "section_id": wp.section_id, "is_junction": int(wp.is_junction),
             "lane_width": wp.lane_width, "lane_type": str(wp.lane_type),
-            "lane_change": str(wp.lane_change)}
+            "lane_change": str(wp.lane_change), "nearest_landmark": nearest,
+            "distance_to_next_turn_m": _distance_to_next_junction(wp)}
 
 
 def _spawn_cameras(world, ego, specs: list[CameraSpec]):
@@ -288,6 +328,7 @@ def _cleanup(client, world, tm, cameras, ego, vehicle_ids, walker_ids, controlle
 
 def _capture_loop(world, ego, queues, writer: RunWriter, cfg: CollectConfig):
     carla_map = world.get_map()
+    landmark_names, landmark_pos = _landmark_index(carla_map)
     total = cfg.capture.stop.resolve_num_frames(cfg.capture.raw_fps)
     log.info("capturing %d frames (%.1f s sim time)", total, total / cfg.capture.raw_fps)
     report_every = 5 * cfg.capture.raw_fps
@@ -304,7 +345,9 @@ def _capture_loop(world, ego, queues, writer: RunWriter, cfg: CollectConfig):
             arr = np.frombuffer(image.raw_data, dtype=np.uint8)
             images[name] = arr.reshape(image.height, image.width, 4)[:, :, 2::-1]  # BGRA -> RGB
         row, location = _telemetry_row(world, ego)
-        writer.append(i, images, row, _map_context_row(carla_map, location))
+        writer.append(i, images, row,
+                      _map_context_row(carla_map, location,
+                                       landmark_names, landmark_pos))
         if (i + 1) % report_every == 0:
             log.info("  %d/%d frames", i + 1, total)
 
@@ -336,6 +379,12 @@ def collect(cfg: CollectConfig, run_id: str | None = None,
                          f"available: {', '.join(available)}")
 
     log.info("loading map %s (CARLA %s)", cfg.scenario.map_name, carla_version)
+    # heavy maps (Town03/Town05) blow well past the RPC timeout during load and
+    # stay slow while assets stream in afterwards - the first sync ticks
+    # included - and a tick timeout aborts the whole process (thrown on a
+    # client worker thread). Run the entire setup phase on a generous budget;
+    # the per-tick budget is restored right before the capture loop.
+    client.set_timeout(max(cfg.carla.timeout_sec, 300.0))
     world = client.load_world(cfg.scenario.map_name)
     # load_world resets episode settings, so sync mode goes strictly after it
     settings = world.get_settings()
@@ -394,6 +443,7 @@ def collect(cfg: CollectConfig, run_id: str | None = None,
             vehicle_ids, walker_ids, controller_ids = _spawn_traffic(
                 client, world, tm, cfg.traffic, cfg.carla.tm_port, rng, seed, ego_index)
         world.tick()  # let sensors and traffic register before frame 0
+        client.set_timeout(cfg.carla.timeout_sec)  # setup done: per-tick budget
 
         writer = RunWriter(h5_path, cfg, run_id, carla_version, seed)
         wall_start = time.monotonic()
