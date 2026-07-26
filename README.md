@@ -17,7 +17,9 @@ tests/                 pytest suite (no CARLA needed)
 uv sync                # needs the CARLA 0.9.16 cp311 wheel path in pyproject.toml
 
 # start the server headless
-~/CARLA_0.9.16/CarlaUE4.sh -RenderOffScreen -nosound -quality-level=Low &
+# (no -quality-level=Low: it makes load_world segfault on some towns,
+#  e.g. Town03/Town05 - carla-simulator/carla#4940)
+~/CARLA_0.9.16/CarlaUE4.sh -RenderOffScreen -nosound &
 
 # stage 1: capture a run from a scenario config
 python -m carla_data_pipeline collect configs/scenarios/town10_light_traffic.yaml
