@@ -200,6 +200,31 @@ class CameraSpecConfig(StrictModel):
         return self
 
 
+class UploadConfig(StrictModel):
+    """Stage-3 destination. Recorded in the run sidecar at collect time, so
+    build-samples/upload read it from there - per run, not per invocation."""
+    enabled: bool = Field(False, description="Upload finished runs to the hub.")
+    backend: Literal["hf"] = Field(
+        "hf", description="Hosting backend; only the Hugging Face Hub for now.")
+    repo_id: Optional[str] = Field(
+        None, description="Dataset repo id, e.g. 'org/vla-carla-runs'. "
+                          "Required when enabled; created private on first upload.")
+    private: bool = Field(True, description="Create the repo private.")
+    path_prefix: str = Field(
+        "runs", description="Directory inside the repo for <run_id>.h5/.json.")
+    auto: bool = Field(
+        True, description="Upload automatically after build-samples succeeds.")
+    delete_local_h5: bool = Field(
+        False, description="Delete the local .h5 once the remote size is "
+                           "verified; the .json sidecar is always kept.")
+
+    @model_validator(mode="after")
+    def _repo_required(self):
+        if self.enabled and not self.repo_id:
+            raise ValueError("upload.enabled requires upload.repo_id")
+        return self
+
+
 class CollectConfig(StrictModel):
     """Root of a fully resolved scenario config."""
     carla: CarlaConnection = Field(default_factory=CarlaConnection,
@@ -216,3 +241,6 @@ class CollectConfig(StrictModel):
     camera_spec: CameraSpecConfig = Field(
         ..., description="Camera rig; in YAML this is a path to a camera_spec file, "
                          "resolved by the loader.")
+    upload: UploadConfig = Field(
+        default_factory=UploadConfig,
+        description="Stage-3 upload of finished runs to a hosting service.")

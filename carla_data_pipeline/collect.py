@@ -4,7 +4,8 @@ Writes the per-frame groups of `data/runs/<run_id>.h5` (/images, /telemetry,
 /map_context, /camera_config, root attrs) per `data/README.md`, plus a
 `<run_id>.json` sidecar. Requires a running CARLA server, e.g.:
 
-    CarlaUE4.sh -RenderOffScreen -nosound -quality-level=Low
+    CarlaUE4.sh -RenderOffScreen -nosound
+    # no -quality-level=Low: it segfaults load_world (carla#4940)
 
 This module imports `carla`; the CLI only loads it once a real connection is
 needed, so `--dry-run` never touches it.

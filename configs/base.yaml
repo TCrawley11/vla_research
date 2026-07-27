@@ -15,3 +15,10 @@ capture:
   waypoint_period_sec: 0.5
 
 camera_spec: camera_spec/six_cam_1600x900.yaml
+
+# Stage 3: after build-samples, ship the run to the team's private HF dataset
+# repo, then drop the local .h5 (sidecar stays). Needs `hf auth login` once.
+upload:
+  enabled: true
+  repo_id: VLA-uwo-2026/vla-carla-runs
+  delete_local_h5: true

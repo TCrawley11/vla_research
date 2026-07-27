@@ -24,8 +24,14 @@ uv sync                # needs the CARLA 0.9.16 cp311 wheel path in pyproject.to
 # stage 1: capture a run from a scenario config
 python -m carla_data_pipeline collect configs/scenarios/town10_light_traffic.yaml
 
-# stage 2: build the sample groups into the run file (offline)
+# stage 2: build the sample groups into the run file (offline); when
+# upload.enabled in configs/base.yaml this auto-runs stage 3 afterwards
 python -m carla_data_pipeline build-samples run01
+
+# stage 3 (usually automatic): upload the finished run to the private HF
+# dataset repo (upload.repo_id), verify, then delete the local .h5.
+# One-time setup: `hf auth login`. Backfill/retry: upload --all
+python -m carla_data_pipeline upload run01
 ```
 
 `collect --dry-run` validates and prints the resolved config without CARLA;

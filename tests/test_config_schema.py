@@ -32,6 +32,8 @@ def test_example_scenario_loads():
     assert cfg.traffic.enabled and cfg.traffic.num_vehicles == 20
     assert [c.name for c in cfg.camera_spec.cameras] == [
         "FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]
+    assert cfg.upload.enabled and cfg.upload.auto and cfg.upload.delete_local_h5
+    assert cfg.upload.repo_id == "VLA-uwo-2026/vla-carla-runs"
 
 
 def test_unknown_key_rejected():
@@ -94,6 +96,16 @@ def test_camera_fov_bounds():
 def test_tm_port_must_differ():
     with pytest.raises(ValidationError, match="tm_port"):
         CollectConfig.model_validate(minimal(carla={"port": 2000, "tm_port": 2000}))
+
+
+def test_upload_enabled_requires_repo_id():
+    with pytest.raises(ValidationError, match="repo_id"):
+        CollectConfig.model_validate(minimal(upload={"enabled": True}))
+
+
+def test_upload_defaults_off():
+    cfg = CollectConfig.model_validate(minimal())
+    assert cfg.upload.enabled is False and cfg.upload.delete_local_h5 is False
 
 
 def test_seed_must_be_non_negative():

@@ -19,6 +19,8 @@ output.csv
 # data captures: track structure + README, ignore the large files themselves
 data/runs/*
 !data/runs/.gitkeep
+data/bench/
+data/videos/
 
 # ignore progress tracking files
 journal/

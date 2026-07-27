@@ -25,9 +25,12 @@ quick inspection without opening the h5, and adds:
 - `config`: the fully resolved scenario config the run was captured with
 - `seed`: the resolved seed (also recorded when the config left it unset)
 - `status`: `collecting` -> `collected` (or `aborted`, with an `error` field)
-  -> `samples_built`
+  -> `samples_built` -> `uploaded`
 - `num_frames`, `sim_duration_sec`, `wall_duration_sec`; after Stage 2,
   `num_samples`
+- `upload` (after Stage 3): repo id, path in repo, verified size, timestamp.
+  When `upload.delete_local_h5` is set the .h5 exists only on the Hub; the
+  sidecar always stays local as the run's record
 
 ## Per-run HDF5 schema (`data/runs/<run_id>.h5`)
 

@@ -38,6 +38,18 @@ def main(argv=None) -> int:
     p_build.add_argument("run", help="run id (e.g. run01) or a path to a .h5")
     p_build.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
                          help="where run ids are looked up (default: data/runs)")
+    p_build.add_argument("--no-upload", action="store_true",
+                         help="skip the automatic stage-3 upload even if the run's "
+                              "config enables it")
+
+    p_upload = sub.add_parser(
+        "upload", help="Stage 3: upload finished runs to the configured hub repo")
+    p_upload.add_argument("run", nargs="?",
+                          help="run id (e.g. run01) or a path to a .h5")
+    p_upload.add_argument("--all", action="store_true",
+                          help="upload every run in --data-dir whose samples are built")
+    p_upload.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
+                          help="where run ids are looked up (default: data/runs)")
 
     p_man = sub.add_parser("man", help="show the manual")
     p_man.add_argument("topic", nargs="?", choices=["usage", "config"], default="usage",
@@ -72,9 +84,58 @@ def main(argv=None) -> int:
             return 2
         from .build_samples import build_samples
         build_samples(path)
-        return 0
+        if args.no_upload:
+            return 0
+        return _auto_upload(path)
+
+    if args.command == "upload":
+        from .upload import UploadError, upload_cfg_from_sidecar, upload_run
+        if bool(args.run) == args.all:
+            print("upload: give a run id/path or --all (not both)", file=sys.stderr)
+            return 2
+        if args.all:
+            targets = sorted(p.with_suffix(".h5")
+                             for p in args.data_dir.glob("run*.json"))
+        else:
+            targets = [Path(args.run) if args.run.endswith(".h5")
+                       else args.data_dir / f"{args.run}.h5"]
+        failures = 0
+        for h5_path in targets:
+            try:
+                ucfg = upload_cfg_from_sidecar(h5_path.with_suffix(".json"))
+                if not ucfg.enabled:
+                    msg = f"{h5_path.stem}: upload not enabled in this run's config"
+                    if args.all:
+                        logging.info("%s; skipping", msg)
+                        continue
+                    print(msg, file=sys.stderr)
+                    return 2
+                upload_run(h5_path, ucfg)
+            except (OSError, ValueError, UploadError) as exc:
+                logging.error("%s: %s", h5_path.stem, exc)
+                failures += 1
+        return 1 if failures else 0
 
     return 2
+
+
+def _auto_upload(h5_path: Path) -> int:
+    """Stage-3 hook after build-samples: no-op unless the run's recorded config
+    enables it. A failed upload fails the command; `upload --all` backfills."""
+    from .upload import UploadError, upload_cfg_from_sidecar, upload_run
+    sidecar = h5_path.with_suffix(".json")
+    if not sidecar.is_file():
+        return 0
+    ucfg = upload_cfg_from_sidecar(sidecar)
+    if not (ucfg.enabled and ucfg.auto):
+        return 0
+    try:
+        upload_run(h5_path, ucfg)
+        return 0
+    except (OSError, ValueError, UploadError) as exc:
+        logging.error("auto-upload failed (samples are built; retry with "
+                      "`upload %s`): %s", h5_path.stem, exc)
+        return 1
 
 
 if __name__ == "__main__":

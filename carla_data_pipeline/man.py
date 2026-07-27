@@ -21,18 +21,25 @@ STAGES
                     data/runs/<run_id>.h5 plus a <run_id>.json sidecar
   2. build-samples  offline; appends the per-sample groups (/sample_index,
                     /trajectory, /action) into the same .h5
+  3. upload         ships <run_id>.h5 + .json to the configured private HF
+                    dataset repo, verifies size, then (per config) deletes the
+                    local .h5; runs automatically after build-samples when
+                    upload.enabled + upload.auto
 
 COMMANDS
   collect <scenario.yaml> [--run-id ID] [--dry-run | --verify-only]
       --dry-run      validate + print the resolved config; never touches CARLA
       --verify-only  connect and check map/spawn/blueprints, spawn nothing
-  build-samples <run_id | path.h5>
+  build-samples <run_id | path.h5> [--no-upload]
+  upload <run_id | path.h5> | --all
+      idempotent; --all backfills every built run in --data-dir
   man [usage | config]
 
 TYPICAL SESSION
-  $ ~/CARLA_0.9.16/CarlaUE4.sh -RenderOffScreen -nosound -quality-level=Low &
+  $ hf auth login    # once; upload destination is configs/base.yaml upload.repo_id
+  $ ~/CARLA_0.9.16/CarlaUE4.sh -RenderOffScreen -nosound &   # never -quality-level=Low (carla#4940)
   $ python -m carla_data_pipeline collect configs/scenarios/town10_light_traffic.yaml
-  $ python -m carla_data_pipeline build-samples run01
+  $ python -m carla_data_pipeline build-samples run01        # auto-uploads + prunes local .h5
 
 CONFIG FILES
   configs/base.yaml           shared defaults (connection, capture params)
