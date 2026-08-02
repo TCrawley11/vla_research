@@ -1,6 +1,6 @@
 # The 6-camera rig (ported from the notebook's camera_specs).
 # Mounting is in the vehicle frame, CARLA convention: x forward, y right, z up,
-# meters/degrees. back_right uses a wider 110 fov, the rest use 70.
+# meters/degrees. BACK uses a wider 110 fov (nuScenes CAM_BACK), the rest use 70.
 cameras:
   - name: FRONT
     fov: 70
@@ -14,12 +14,12 @@ cameras:
     location: {z: 1.5}
     rotation: {yaw: 55}
   - name: BACK
-    fov: 70
+    fov: 110
     # Mounted at the rear of the roof (nuScenes-style), not the vehicle
     # centre: from x=0 the camera looks across the whole rear half of the car
-    # and the ego body fills ~a third of the frame. x=-1.5 cuts the rear blind
-    # zone to ~4.4 m while staying physically mountable (z=1.6 keeps the
-    # nuScenes back-cam-slightly-higher convention).
+    # and the ego body fills ~a third of the frame. x=-1.5 is roughly above the
+    # rear axle, matching nuScenes CAM_BACK (~x=-1.3, z=1.58 in vehicle-centre
+    # coords); with the 110 fov the ground blind zone behind the bumper is ~1 m.
     location: {x: -1.5, z: 1.6}
     rotation: {yaw: 180}
   - name: BACK_LEFT
@@ -27,6 +27,6 @@ cameras:
     location: {z: 1.5}
     rotation: {yaw: -120}
   - name: BACK_RIGHT
-    fov: 110
+    fov: 70
     location: {z: 1.5}
     rotation: {yaw: 120}
