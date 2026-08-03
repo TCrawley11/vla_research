@@ -16,9 +16,12 @@ capture:
 
 camera_spec: camera_spec/six_cam_1600x900.yaml
 
-# Stage 3: after build-samples, ship the run to the team's private HF dataset
-# repo, then drop the local .h5 (sidecar stays). Needs `hf auth login` once.
+# Stage 3: after build-samples, ship the run to the team's HF dataset repo,
+# then drop the local .h5 (sidecar stays). Needs `hf auth login` once.
+# Convention: the repo is named after the camera_spec config it was recorded
+# with, so one repo holds one rig's runs.
 upload:
   enabled: true
-  repo_id: VLA-uwo-2026/vla-carla-runs
+  repo_id: VLA-uwo-2026/six_cam_1600x900
+  private: false
   delete_local_h5: true
