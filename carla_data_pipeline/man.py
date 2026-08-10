@@ -33,6 +33,9 @@ COMMANDS
   build-samples <run_id | path.h5> [--no-upload]
   upload <run_id | path.h5> | --all
       idempotent; --all backfills every built run in --data-dir
+  export-video <run_id | path.h5> [--camera CAM]... [--out-dir DIR] [--crf N]
+      viewing tool: rebuild one h264 mp4 per camera from the raw frames
+      into data/videos/<run_id>/; needs ffmpeg, touches nothing in the run
   man [usage | config]
 
 TYPICAL SESSION

@@ -51,6 +51,20 @@ def main(argv=None) -> int:
     p_upload.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
                           help="where run ids are looked up (default: data/runs)")
 
+    p_video = sub.add_parser(
+        "export-video", help="rebuild per-camera mp4s from a run .h5 (viewing tool)")
+    p_video.add_argument("run", help="run id (e.g. run07) or a path to a .h5")
+    p_video.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
+                         help="where run ids are looked up (default: data/runs)")
+    p_video.add_argument("--out-dir", type=Path, default=Path("data/videos"),
+                         help="output root; videos land in <out-dir>/<run_id>/ "
+                              "(default: data/videos)")
+    p_video.add_argument("--camera", action="append", metavar="CAM",
+                         help="camera name, e.g. FRONT; repeat for several "
+                              "(default: all cameras)")
+    p_video.add_argument("--crf", type=int, default=18,
+                         help="x264 quality, lower is better (default: 18)")
+
     p_man = sub.add_parser("man", help="show the manual")
     p_man.add_argument("topic", nargs="?", choices=["usage", "config"], default="usage",
                        help="usage (default) or the generated config reference")
@@ -87,6 +101,22 @@ def main(argv=None) -> int:
         if args.no_upload:
             return 0
         return _auto_upload(path)
+
+    if args.command == "export-video":
+        path = Path(args.run) if args.run.endswith(".h5") else args.data_dir / f"{args.run}.h5"
+        if not path.is_file():
+            print(f"no such run file: {path} (uploaded runs are pruned locally - "
+                  "`hf download` it first)", file=sys.stderr)
+            return 2
+        from .video import VideoError, export_videos
+        try:
+            for out in export_videos(path, args.out_dir, cameras=args.camera,
+                                     crf=args.crf):
+                print(out)
+        except VideoError as exc:
+            print(f"export-video: {exc}", file=sys.stderr)
+            return 1
+        return 0
 
     if args.command == "upload":
         from .upload import UploadError, upload_cfg_from_sidecar, upload_run

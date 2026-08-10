@@ -27,3 +27,6 @@ journal/
 
 # ignore instruction files
 docs/
+
+# personal working directory
+_local/

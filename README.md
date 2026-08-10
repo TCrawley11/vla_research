@@ -32,6 +32,9 @@ python -m carla_data_pipeline build-samples run01
 # dataset repo (upload.repo_id), verify, then delete the local .h5.
 # One-time setup: `hf auth login`. Backfill/retry: upload --all
 python -m carla_data_pipeline upload run01
+
+# viewing tool: rebuild per-camera mp4s from a run (needs ffmpeg)
+python -m carla_data_pipeline export-video run01 --camera FRONT
 ```
 
 `collect --dry-run` validates and prints the resolved config without CARLA;
