@@ -9,6 +9,7 @@ dependencies = [
     "h5py>=3.16.0",
     "huggingface-hub>=1.24.0",
     "numpy>=2.4.6",
+    "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "pyyaml>=6.0.3",
 ]
