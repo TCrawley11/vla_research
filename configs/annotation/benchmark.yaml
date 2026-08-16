@@ -1,0 +1,44 @@
+# Annotation benchmark: which VLM annotators to compare, on which samples, and
+# how. Read by scripts/annotate_benchmark.py; results land in out_dir as
+# <sample_id>__<model>.json (plus questions/<sample_id>.json in shared mode)
+# and scripts/build_inspection.py renders them side by side. Every field is
+# validated (unknown keys are errors); see BenchmarkConfig in the script.
+
+# Candidate annotators (OpenRouter model ids). Adding one and re-running only
+# annotates the missing (sample, model) pairs.
+models:
+  - qwen/qwen3.5-27b
+  - qwen/qwen2.5-vl-72b-instruct
+  - qwen/qwen3.8-27b            # released 2026-08-14; one provider (AkashML) so far
+
+samples:
+  run: run43                    # run id in repo_id (null = random run); --h5 skips the download
+  indices: [4, 5, 8, 10, 12, 13, 16, 18, 19, 21]   # fixed eval set (same frames as the 2026-08-10 smoke test)
+  # instead of indices, random picks reproducible through the seed:
+  # num_samples: 10
+  # seed: 0
+
+questions:
+  mode: shared                  # shared: one question set per sample, every model answers it | own: each model writes its own QA
+  model: qwen/qwen3.5-397b-a17b # question author in shared mode; kept out of the candidate list so nobody answers their own questions
+  per_type: 3                   # per QA type (perception/prediction/planning/behaviour) -> 12 questions per sample
+  generation:                   # overrides of the generation block below, for the question author only
+    max_tokens: 16000           # the 397B thinks 4-8k tokens before writing a set; 6000 truncated it repeatedly
+
+prompt_version: team-schema-v2  # prompt texts live in scripts/annotate_benchmark.py (PROMPTS), keyed by this name
+
+limits:                         # stated in the prompt and enforced code-side (violation -> retry with feedback)
+  answer_max_words: 30
+  caption_short_max_words: 25
+  caption_detailed_min_words: 30
+  caption_detailed_max_words: 70
+
+generation:                     # identical for every candidate, so the comparison is fair
+  temperature: 0.3
+  max_tokens: 6000              # qwen3.5/3.8 think by default; thinking tokens count against this (a question set overflowed 4000 once)
+  max_attempts: 3               # schema-violation retries with feedback, per request
+  reasoning: null               # OpenRouter `reasoning` object passed through, e.g. {enabled: false} or {effort: low}; null = provider default
+  image_width: 800              # cameras are downscaled to this width before upload
+
+repo_id: VLA-uwo-2026/six_cam_1600x900
+out_dir: data/annotation_test
