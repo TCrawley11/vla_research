@@ -169,6 +169,8 @@ def test_prompts_format_for_both_stages():
     answers = ab.ANNOTATOR_SYSTEM.format(n_total=counts.total, **LIMITS.model_dump())
     assert "Write exactly 18 questions, 6 perception, 4 prediction, 4 planning, 4 behaviour" in qs
     assert "Write the question set for one sample" in qs
+    assert "Write questions only, never answers" in qs
+    assert "never presuppose objects" in qs
     assert "(18 items)" in answers
     assert "30 words each" in answers and "30-70 words" in answers
     assert '{"questions": [{"type": ..., "question": ...}, ...]}' in qs

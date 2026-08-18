@@ -257,13 +257,17 @@ def load_config(path: Path) -> BenchmarkConfig:
 
 QUESTION_WRITER_SYSTEM = """\
 Write the question set for one sample of an autonomous driving
-dataset collected in the CARLA simulator.
+dataset collected in the CARLA simulator. Several vision-language models will
+later answer exactly these questions for this sample, using the same camera
+images and ground-truth record you see now, so every question must be
+answerable from those inputs alone. Write questions only, never answers.
 
 Write exactly {n_total} questions, {counts_text}, of these types:
     perception - Test what is visible in the images (road layout, lane
                  markings, traffic lights and signs, other road users, weather
                  and lighting); ask only about things that are visible, or
-                 whose absence is worth stating; 
+                 whose absence is worth stating; never presuppose objects
+                 that are not there,
     prediction - Test what the recorded future trajectory shows, phrased as
                  what the ego vehicle is expected to do next,
     planning   - Test what the ego vehicle should do next and how, given the
