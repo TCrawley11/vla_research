@@ -33,7 +33,7 @@ def test_example_scenario_loads():
     assert [c.name for c in cfg.camera_spec.cameras] == [
         "FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]
     assert cfg.upload.enabled and cfg.upload.auto and cfg.upload.delete_local_h5
-    assert cfg.upload.repo_id == "VLA-uwo-2026/vla-carla-runs"
+    assert cfg.upload.repo_id == "VLA-uwo-2026/six_cam_1600x900"
 
 
 def test_unknown_key_rejected():

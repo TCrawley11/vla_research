@@ -1,0 +1,76 @@
+# Example pool for the annotation benchmark (enable via the `examples` block
+# in configs/annotation/benchmark.yaml). Each entry is one finished annotation
+# from a scene that is NOT in the eval set, shown to the annotator as
+# format/style reference; k are picked per sample, seeded by the sample id.
+# Content here is hand-written draft material - replace freely with curated
+# real model outputs. Every entry is validated against the configured word
+# limits at load time (ExampleAnnotation / load_examples in
+# scripts/annotate_benchmark.py), so an example can never contradict the
+# limits stated in the prompt.
+
+- scene: stopped at a red light behind a sedan, urban intersection
+  caption_short: The ego vehicle is stopped at a red light behind a white sedan at an urban intersection.
+  caption_detailed: >-
+    The ego vehicle waits at a signalized four-way intersection where the
+    traffic light directly ahead shows red. A white sedan is stopped
+    immediately in front, and a cyclist waits near the crosswalk to the right.
+    Lane markings separate two through lanes and a left-turn lane. The road is
+    dry under clear daylight, and cross traffic passes through the
+    intersection.
+  qa_pairs:
+    - type: perception
+      question: What is the state of the traffic light ahead, and what vehicles are visible in front of the ego vehicle?
+      answer: The light directly ahead is red. A white sedan is stopped immediately ahead of the ego vehicle in the same lane.
+    - type: prediction
+      question: What does the recorded trajectory show the ego vehicle doing over the next 3 seconds?
+      answer: It remains stationary, with essentially zero forward displacement over the horizon.
+    - type: planning
+      question: What should the ego vehicle do next, and what should it check before moving?
+      answer: Stay stopped until the light turns green, then check the sedan ahead and the cyclist near the crosswalk before pulling away.
+    - type: behaviour
+      question: What is the ego vehicle's current motion state?
+      answer: It is fully stopped, with zero forward and angular velocity, waiting at the red light.
+
+- scene: slowing into a right turn at a T-junction, light traffic
+  caption_short: The ego vehicle slows and begins a right turn at a T-junction.
+  caption_detailed: >-
+    The ego vehicle approaches a T-junction and steers into a right turn. The
+    curb and a give-way marking are visible ahead, and an oncoming hatchback
+    passes on the left. Trees line both sides of the target road, which is
+    clear of traffic. Lighting is overcast but visibility is good, and the
+    pavement is dry.
+  qa_pairs:
+    - type: perception
+      question: Is there any oncoming traffic while the ego vehicle turns?
+      answer: Yes, one oncoming hatchback passes on the left; the target road itself is clear.
+    - type: prediction
+      question: How far does the ego vehicle travel over the horizon, and along what path?
+      answer: It moves about 9.8 m forward while curving right, slowing from about 4.1 m/s as it rounds the corner.
+    - type: planning
+      question: How should the ego vehicle execute the upcoming maneuver?
+      answer: Continue the right turn at low speed, yielding to the oncoming hatchback and staying within the target lane.
+    - type: behaviour
+      question: What maneuver is the ego vehicle performing right now?
+      answer: It is turning right at about 4.1 m/s with a negative angular velocity, midway through the junction.
+
+- scene: cruising on a two-lane road behind a truck, clear day
+  caption_short: The ego vehicle cruises steadily behind a truck on a two-lane road.
+  caption_detailed: >-
+    The ego vehicle follows a box truck at a steady distance on a straight
+    two-lane road. A solid center line separates the opposing lanes, and a
+    speed limit sign stands on the right shoulder. No pedestrians are visible.
+    The sky is clear, shadows are sharp, and the road surface is dry with
+    clearly painted edge lines.
+  qa_pairs:
+    - type: perception
+      question: What signage is visible along the road?
+      answer: A speed limit sign stands on the right shoulder; no other signs or signals are visible.
+    - type: prediction
+      question: Is the ego vehicle expected to change its speed over the next 3 seconds?
+      answer: No, the trajectory shows it continuing straight at a roughly steady 7.9 m/s.
+    - type: planning
+      question: What should the ego vehicle do while following the truck?
+      answer: Continue driving forward at its current speed, keeping a steady following distance and staying centered in its lane.
+    - type: behaviour
+      question: Describe the ego vehicle's current motion.
+      answer: It is driving forward at 7.9 m/s in a straight line, with negligible angular velocity.

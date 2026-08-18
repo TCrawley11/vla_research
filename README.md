@@ -37,6 +37,19 @@ python -m carla_data_pipeline upload run01
 python -m carla_data_pipeline export-video run01 --camera FRONT
 ```
 
+## Annotation benchmark
+
+Compares candidate VLM annotators (OpenRouter) on a fixed set of dataset
+samples, driven by `configs/annotation/benchmark.yaml` (question author,
+candidate models, samples, generation settings). Per sample the question
+author (`questions.model`) writes one question set once; every candidate
+answers exactly that set, so answers compare one-to-one across models.
+
+```sh
+OPENROUTER_API_KEY=... uv run python scripts/annotate_benchmark.py   # --h5 <local run> to skip the download
+uv run python scripts/build_inspection.py                             # -> data/annotation_test/inspection.html
+```
+
 `collect --dry-run` validates and prints the resolved config without CARLA;
 `collect --verify-only` connects and checks map/spawn/blueprints without
 spawning. Full manual and config reference:
