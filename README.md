@@ -6,7 +6,8 @@ Headless, config-driven data collection from CARLA for VLA training.
 
 ```
 carla_data_pipeline/   the pipeline package (CLI: python -m carla_data_pipeline)
-configs/               base.yaml, camera_spec/ rigs, scenarios/ to collect with
+configs/               base.yaml, camera_spec/ rigs, scenarios/, annotation/
+models/                local GGUF + mmproj (gitignored; serve_annotator.sh fills this)
 data/runs/             output: <run_id>.h5 + <run_id>.json per run (schema: data/README.md)
 tests/                 pytest suite (no CARLA needed)
 ```
@@ -58,3 +59,22 @@ spawning. Full manual and config reference:
 python -m carla_data_pipeline man
 python -m carla_data_pipeline man config
 ```
+
+## Local annotation (Qwen3.5-9B Q6_K)
+
+Six-camera samples from the team HF dataset, annotated by a local vLLM
+server. Question writing and answering use the same GGUF. Qwen3.5 needs the
+git-pinned `vllm-gguf-plugin` (its generic GGUF mapper cannot load Qwen's
+hybrid GDN weights) and `mmproj-BF16.gguf` beside the backbone.
+
+```sh
+uv sync --group infer
+scripts/serve_annotator.sh          # downloads GGUFs into models/ if missing
+python -m carla_data_pipeline annotate
+python -m carla_data_pipeline annotate --h5 data/runs/run43.h5 --limit 1
+uv run python scripts/build_inspection.py --dir data/annotations
+```
+
+Default walk is every `runs/*.h5`, samples 1..n-1 in order. `--run`,
+`--indices`, and `--limit` slice that walk. Config:
+`configs/annotation/local.yaml`.

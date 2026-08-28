@@ -25,6 +25,8 @@ STAGES
                     dataset repo, verifies size, then (per config) deletes the
                     local .h5; runs automatically after build-samples when
                     upload.enabled + upload.auto
+  4. annotate       local vLLM client: sequential walk of the HF dataset,
+                    6-camera key frames, same model writes questions and answers
 
 COMMANDS
   collect <scenario.yaml> [--run-id ID] [--dry-run | --verify-only]
@@ -36,6 +38,10 @@ COMMANDS
   export-video <run_id | path.h5> [--camera CAM]... [--out-dir DIR] [--crf N]
       viewing tool: rebuild one h264 mp4 per camera from the raw frames
       into data/videos/<run_id>/; needs ffmpeg, touches nothing in the run
+  annotate [--config YAML] [--h5 path.h5] [--run ID] [--indices 4,5] [--limit N]
+      [--force] [--regenerate-questions]
+      needs a running vLLM server (scripts/serve_annotator.sh); default walk is
+      every runs/*.h5, samples 1..n-1 in order
   man [usage | config]
 
 TYPICAL SESSION
@@ -45,9 +51,10 @@ TYPICAL SESSION
   $ python -m carla_data_pipeline build-samples run01        # auto-uploads + prunes local .h5
 
 CONFIG FILES
-  configs/base.yaml           shared defaults (connection, capture params)
-  configs/camera_spec/*.yaml  camera rigs, referenced via `camera_spec:`
-  configs/scenarios/*.yaml    what you pass to collect; `extends: ../base.yaml`
+  configs/base.yaml              shared defaults (connection, capture params)
+  configs/camera_spec/*.yaml     camera rigs, referenced via `camera_spec:`
+  configs/scenarios/*.yaml       what you pass to collect; `extends: ../base.yaml`
+  configs/annotation/local.yaml  local vLLM annotate walk (sequential by default)
 
   A scenario deep-merges over base (scenario wins). Run identity (runNN) is
   assigned at collect time, never written in configs. Full field reference:
@@ -57,6 +64,8 @@ DATA LAYOUT
   data/runs/<run_id>.h5    self-contained run (schema: data/README.md)
   data/runs/<run_id>.json  human/LLM-readable sidecar: resolved config, seed,
                            counts, stage status
+  data/annotations/        annotate output (questions, results, frames)
+  models/                  Qwen3.5-9B Q6_K GGUF + mmproj (gitignored)
 """
 
 

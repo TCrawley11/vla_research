@@ -1,0 +1,41 @@
+# Local GGUF annotation: sequential walk of the team HF dataset, 6-camera
+# key frames, Qwen3.5-9B Q6_K for both question writing and answers.
+# Serve first: scripts/serve_annotator.sh
+# Then: python -m carla_data_pipeline annotate
+
+repo_id: VLA-uwo-2026/six_cam_1600x900
+out_dir: data/annotations
+
+# Default: every runs/*.h5, samples 1..n-1 in order (index 0 is spawn).
+# Set run / indices / limit only when you need a slice.
+samples:
+  run: null
+  indices: null
+  limit: null
+
+inference:
+  base_url: http://127.0.0.1:8001/v1
+  model: qwen3.5-9b-q6_k          # must match --served-model-name
+  concurrency: 2                  # 5060 Ti 16GB; raise after measuring KV
+  timeout_sec: 300
+  chat_template_kwargs:
+    enable_thinking: false
+
+questions:
+  counts:
+    perception: 6
+    prediction: 4
+    planning: 4
+    behaviour: 4
+
+limits:
+  answer_max_words: 30
+  caption_short_max_words: 25
+  caption_detailed_min_words: 30
+  caption_detailed_max_words: 70
+
+generation:
+  temperature: 0.3
+  max_tokens: 4000
+  max_attempts: 3
+  image_width: 800

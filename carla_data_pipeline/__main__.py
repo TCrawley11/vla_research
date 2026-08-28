@@ -1,4 +1,4 @@
-"""CLI entry point: python -m carla_data_pipeline {collect,build-samples,man}.
+"""CLI entry point: python -m carla_data_pipeline {collect,build-samples,annotate,man}.
 
 `carla` is imported lazily inside the collect path only, so config validation
 (--dry-run), build-samples and man all work without the CARLA wheel or server.
@@ -68,6 +68,22 @@ def main(argv=None) -> int:
     p_man = sub.add_parser("man", help="show the manual")
     p_man.add_argument("topic", nargs="?", choices=["usage", "config"], default="usage",
                        help="usage (default) or the generated config reference")
+
+    p_ann = sub.add_parser(
+        "annotate", help="Stage 4: annotate samples with a local vLLM endpoint")
+    p_ann.add_argument("--config", type=Path, default=Path("configs/annotation/local.yaml"),
+                       help="annotation config (default: configs/annotation/local.yaml)")
+    p_ann.add_argument("--h5", type=Path, help="local run .h5; skips the HF download")
+    p_ann.add_argument("--base-url",
+                       help="override inference.base_url (OpenAI-compatible root)")
+    p_ann.add_argument("--run", help="override samples.run (one run id in the repo)")
+    p_ann.add_argument("--indices",
+                       help="comma-separated sample indices (requires --run or --h5)")
+    p_ann.add_argument("--limit", type=int, help="stop after N samples")
+    p_ann.add_argument("--force", action="store_true",
+                       help="recompute results that are already current on disk")
+    p_ann.add_argument("--regenerate-questions", action="store_true",
+                       help="rewrite cached question sets (invalidates results)")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -145,6 +161,10 @@ def main(argv=None) -> int:
                 logging.error("%s: %s", h5_path.stem, exc)
                 failures += 1
         return 1 if failures else 0
+
+    if args.command == "annotate":
+        from .annotate import run as annotate_run
+        return annotate_run(args)
 
     return 2
 

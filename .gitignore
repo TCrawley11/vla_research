@@ -21,6 +21,10 @@ data/runs/*
 !data/runs/.gitkeep
 data/bench/
 data/videos/
+data/annotations/
+
+# local GGUF weights (scripts/serve_annotator.sh downloads these)
+models/*.gguf
 
 # ignore progress tracking files
 journal/

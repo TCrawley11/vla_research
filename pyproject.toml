@@ -8,21 +8,33 @@ dependencies = [
     "carla",
     "h5py>=3.16.0",
     "huggingface-hub>=1.24.0",
-    "numpy>=2.4.6",
+    "numpy>=2.0",
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "pyyaml>=6.0.3",
 ]
 
-[tool.uv.sources]
-# CARLA ships its client library as a local wheel, not on PyPI. Machine-specific
-# path; acceptable for a single-machine research repo.
-carla = { path = "/home/tygo/CARLA_0.9.16/PythonAPI/carla/dist/carla-0.9.16-cp311-cp311-manylinux_2_31_x86_64.whl" }
-
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
 ]
+# Local annotation serving. vllm-gguf-plugin is installed by
+# scripts/serve_annotator.sh with --no-build-isolation so its CUDA
+# extension links against this vLLM's torch (Qwen3.5 needs
+# weights_adapter/qwen3_5.py from git; the PyPI generic mapper fails).
+infer = [
+    "vllm==0.27.1",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+# CARLA wheel and vLLM CUDA builds are Linux-only in this repo.
+environments = ["sys_platform == 'linux'"]
+
+[tool.uv.sources]
+# CARLA ships its client library as a local wheel, not on PyPI. Machine-specific
+# path; acceptable for a single-machine research repo.
+carla = { path = "/home/tygo/CARLA_0.9.16/PythonAPI/carla/dist/carla-0.9.16-cp311-cp311-manylinux_2_31_x86_64.whl" }
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
