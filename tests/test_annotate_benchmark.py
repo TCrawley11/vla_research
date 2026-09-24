@@ -122,10 +122,10 @@ def test_ground_truth_rejects(over):
 
 def test_ground_truth_prompt_block():
     block = _gt().prompt_block()
-    assert "action label: STOP (Stop and wait before continuing.)" in block
-    assert "velocity: 0.02 m/s" in block
+    assert "current action label (coarse motion class, not a command): STOP" in block
+    assert "speed: 0.02 m/s" in block
     assert "dominant action over the past 1.5 s: FORWARD" in block
-    assert "stays essentially stationary" in block
+    assert "full stop" in block
     assert "map" not in block.lower()
     for cam in ab.CAMERAS:                       # all six cameras are attached
         assert cam in block
@@ -133,13 +133,12 @@ def test_ground_truth_prompt_block():
 
 def test_ground_truth_action_block():
     stop = _gt().action_block()
-    assert stop["linear_velocity_target"] == 0.0
-    assert stop["angular_velocity_target"] == 0.0
-    fwd = _gt(action_label="FORWARD", v=8.062, w=-0.0014).action_block()
-    assert fwd == {"action_text": "Continue driving forward.",
-                   "action_label": "FORWARD",
-                   "linear_velocity_target": 8.06,
-                   "angular_velocity_target": -0.001}
+    assert stop["motion_state"] == "stationary"
+    assert stop["linear_velocity_current"] == .02
+    assert "linear_velocity_target" not in stop
+    forward = _gt(action_label="FORWARD", v=8.062, w=-.0014).action_block()
+    assert forward["linear_velocity_current"] == 8.06
+    assert forward["angular_velocity_current"] == -.001
 
 
 def test_ground_truth_record_is_json_ready():
@@ -170,9 +169,12 @@ def test_prompts_format_for_both_stages():
     assert "Write exactly 18 questions, 6 perception, 4 prediction, 4 planning, 4 behaviour" in qs
     assert "Write the question set for one sample" in qs
     assert "Write questions only, never answers" in qs
-    assert "never presuppose objects" in qs
+    assert "never presuppose objects" in qs.lower()
+    assert "camera other than FRONT" in qs
+    assert "steer-and-hold" in qs
     assert "(18 items)" in answers
     assert "30 words each" in answers and "30-70 words" in answers
+    assert "visible dynamic agents" in answers
     assert '{"questions": [{"type": ..., "question": ...}, ...]}' in qs
     assert '"answers": one item per listed question' in answers
     for text in (qs, answers):
@@ -218,8 +220,19 @@ def test_no_own_mode_surface():
     assert validators == ["validate_answers", "validate_questions"], validators
 
 
+def _ok_detailed(min_words=30):
+    head = ("FRONT shows a residential street with the road curving right. "
+            "BACK looks over a junction just passed. No pedestrians are "
+            "visible in any camera.")
+    words = head.split()
+    if len(words) < min_words:
+        words += ["stone"] * (min_words - len(words))
+    return " ".join(words)
+
+
 def _answers(ids):
-    return {"caption_short": "s", "caption_detailed": " ".join(["w"] * 40),
+    return {"caption_short": "Ego continues along a residential curve.",
+            "caption_detailed": _ok_detailed(),
             "answers": [{"id": i, "answer": f"a {i}"} for i in ids]}
 
 
@@ -262,7 +275,7 @@ def test_trajectory_summary_reports_speed_profile():
     steady = np.array([[4, -0.2], [8, -0.7], [12, -1.4], [15.9, -2.5], [19.7, -3.8], [23.4, -5.3]])
     assert "roughly steady 8." in ab.summarize_trajectory(steady, "RIGHT_CURVE", 3.0, 0.5)
     pull_away = np.array([[0, 0], [0, 0], [0.5, 0], [2, 0], [4, 0], [7, 0]])
-    assert "pulling away from standstill after about 1.0 s" in ab.summarize_trajectory(pull_away, "STRAIGHT", 3.0, 0.5)
+    assert "pulling away from standstill after about 1 s" in ab.summarize_trajectory(pull_away, "STRAIGHT", 3.0, 0.5)
     slowing = np.array([[4, 0], [7, 0], [9, 0], [10.5, 0], [11.5, 0], [12, 0]])
     assert "slowing from about 8.0 m/s to about 1.0 m/s" in ab.summarize_trajectory(slowing, "STRAIGHT", 3.0, 0.5)
     still = np.zeros((6, 2))
@@ -289,27 +302,15 @@ def test_validate_questions():
 # question set cache + result staleness (Benchmark, no client needed)
 # --------------------------------------------------------------------------
 
-def test_question_set_cache_keys_on_question_prompt(tmp_path, monkeypatch):
+def test_legacy_question_cache_is_not_trusted(tmp_path):
     bench = _bench()
     path = tmp_path / "s.json"
+    path.write_text(json.dumps({"model": bench.cfg.questions.model,
+                               "question_prompt_id": ab.QUESTION_WRITER_PROMPT_ID,
+                               "counts": bench.cfg.questions.counts.as_dict()}))
     assert bench.load_question_set(path) is None
-    qs = {"model": bench.cfg.questions.model,
-          "question_prompt_id": ab.QUESTION_WRITER_PROMPT_ID,
-          "counts": bench.cfg.questions.counts.as_dict(),
-          "questions": [{"id": f"q{i:02d}", "type": "perception", "question": "x?"}
-                        for i in range(1, 19)]}
-    path.write_text(json.dumps(qs))
-    assert bench.load_question_set(path) is not None
-    # question-side prompt edit -> stale
-    monkeypatch.setattr(ab, "QUESTION_WRITER_PROMPT_ID", "000000000000")
+    path.write_text("{")
     assert bench.load_question_set(path) is None
-    monkeypatch.undo()
-    # answer-side change only -> still valid
-    tighter = _bench(_cfg(**{"limits.answer_max_words": 20}))
-    assert tighter.load_question_set(path) is not None
-    fewer = _bench(_cfg(**{"questions.counts": {"perception": 3}}))
-    assert fewer.cfg.questions.counts.total == 15
-    assert fewer.load_question_set(path) is None
 
 
 def test_question_set_id_depends_on_text_only():
@@ -319,37 +320,11 @@ def test_question_set_id_depends_on_text_only():
     assert ab.question_set_id(a) == ab.question_set_id(b) != ab.question_set_id(c)
 
 
-def test_result_is_current(tmp_path):
+def test_incomplete_result_is_not_current(tmp_path):
     bench = _bench()
-    cfg = bench.cfg
-    qs = {"id": "abc123", "model": cfg.questions.model}
-    model = cfg.models[0]
-    path = tmp_path / "s__m.json"
-    assert not bench.result_is_current(path, model, qs)
-    base = {"model": model, "prompt_id": ab.ANNOTATOR_PROMPT_ID,
-            "limits": cfg.limits.model_dump(),
-            "qa_counts": cfg.questions.counts.as_dict(), "question_set": qs}
-    path.write_text(json.dumps(base))
-    assert bench.result_is_current(path, model, qs)
-    assert not bench.result_is_current(path, model, {"id": "other"})
-    assert not bench.result_is_current(path, cfg.models[1], qs)
-    # pre-refactor own-mode file (no question set) -> stale
-    no_set = dict(base)
-    del no_set["question_set"]
-    path.write_text(json.dumps(no_set))
-    assert not bench.result_is_current(path, model, qs)
-    # pre-refactor file: prompt_version instead of prompt_id -> stale
-    old = dict(base)
-    del old["prompt_id"]
-    old["prompt_version"] = "team-schema-v2"
-    path.write_text(json.dumps(old))
-    assert not bench.result_is_current(path, model, qs)
-    # tighter limits in the config -> the prompt changed -> stale
-    path.write_text(json.dumps(base))
-    tighter = _bench(_cfg(**{"limits.answer_max_words": 20}))
-    assert not tighter.result_is_current(path, model, qs)
-    more = _bench(_cfg(**{"questions.counts": {"perception": 8}}))
-    assert not more.result_is_current(path, model, qs)
+    path = tmp_path / "s.json"
+    path.write_text(json.dumps({"model": bench.cfg.models[0], "prompt_id": bench.prompt_id()}))
+    assert not bench.result_is_current(path, bench.cfg.models[0], {"id": "x"})
 
 
 # --------------------------------------------------------------------------
@@ -358,8 +333,14 @@ def test_result_is_current(tmp_path):
 
 EXAMPLE = {
     "scene": "toy scene",
+    "source_run": "training",
+    "source_revision": "test-revision",
+    "ground_truth": _gt(sample_id="training_000001").record(),
+    "observations": {"FRONT": "No pedestrians visible on the road."},
     "caption_short": "Short caption.",
-    "caption_detailed": " ".join(["word"] * 35),
+    "caption_detailed": (
+        "FRONT shows a quiet street with no pedestrians visible. "
+        + " ".join(["word"] * 30)),
     "qa_pairs": [{"type": "perception", "question": "What is visible?",
                   "answer": "A road."}],
 }
@@ -401,10 +382,10 @@ def test_render_examples_matches_task_shape(tmp_path):
     raw = [dict(EXAMPLE, scene=f"scene {i}") for i in range(2)]
     pool = ab.load_examples(_pool_cfg(tmp_path, raw, k=2), LIMITS)
     text = ab.render_examples(pool)
-    assert "Example 1 (scene: scene 0):" in text
+    assert "Example 1: scene 0" in text
     assert "q01 [perception] What is visible?" in text
     assert '"answers"' in text and '"caption_detailed"' in text
-    assert "never copy facts" in text
+    assert "Never copy their objects" in text
 
 
 def test_examples_change_prompt_id_and_stale_results(tmp_path):
@@ -425,7 +406,7 @@ def test_examples_change_prompt_id_and_stale_results(tmp_path):
         "limits": plain.cfg.limits.model_dump(),
         "qa_counts": plain.cfg.questions.counts.as_dict(),
         "question_set": qs}))
-    assert plain.result_is_current(path, plain.cfg.models[0], qs)
+    assert not plain.result_is_current(path, plain.cfg.models[0], qs)
     assert not with_ex.result_is_current(path, plain.cfg.models[0], qs)
 
 

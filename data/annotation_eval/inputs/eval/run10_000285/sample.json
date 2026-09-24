@@ -1,0 +1,57 @@
+{
+  "source": {
+    "repo_id": "VLA-uwo-2026/six_cam_1600x900",
+    "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+    "run": "run10",
+    "map": "Town10HD_Opt",
+    "sample_index": 8
+  },
+  "ground_truth": {
+    "sample_id": "run10_000285",
+    "sample_index": 8,
+    "key_frame_id": 285,
+    "action_label": "FORWARD",
+    "past_action": "FORWARD",
+    "trajectory_type": "LEFT_CURVE",
+    "v": 4.437293075601173,
+    "w": 0.11411621136092157,
+    "past_window_sec": 1.4,
+    "horizon_sec": 3.0,
+    "waypoint_period_sec": 0.5,
+    "future_waypoints_ego_frame": [
+      [
+        2.747237281285971,
+        0.13301155700979397
+      ],
+      [
+        6.578471540936872,
+        0.7199216890101223
+      ],
+      [
+        10.311446722533407,
+        2.1517289272772873
+      ],
+      [
+        13.493254721813221,
+        4.6003664367323625
+      ],
+      [
+        15.945361653134299,
+        7.796854482143471
+      ],
+      [
+        17.72987431230067,
+        11.407511136708814
+      ]
+    ]
+  },
+  "input_id": "a9f85c5a428d8a83d16fdab9439bae7f52b7d29a99a62449a9a465a95a1d82bc",
+  "frames": {
+    "FRONT": "FRONT.jpg",
+    "FRONT_LEFT": "FRONT_LEFT.jpg",
+    "FRONT_RIGHT": "FRONT_RIGHT.jpg",
+    "BACK": "BACK.jpg",
+    "BACK_LEFT": "BACK_LEFT.jpg",
+    "BACK_RIGHT": "BACK_RIGHT.jpg"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+  "width": 800,
+  "count": 2,
+  "samples": [
+    {
+      "sample_id": "run04_000345",
+      "run": "run04",
+      "map": "Town05",
+      "split": "examples",
+      "path": "examples/run04_000345/sample.json",
+      "action": "FORWARD",
+      "future_motion": "accelerating from about 5.7 m/s to about 8.1 m/s; 15.5 m forward displacement over 3 s curving left, ending 13.6 m to the left of its current heading",
+      "input_id": "482b0f7a1a3015458243d77d91bf37228b6e2e401a4d2828ca722432d44e630c"
+    },
+    {
+      "sample_id": "run04_000795",
+      "run": "run04",
+      "map": "Town05",
+      "split": "examples",
+      "path": "examples/run04_000795/sample.json",
+      "action": "STOP",
+      "future_motion": "stationary throughout (0.0 m forward displacement over 3 s)",
+      "input_id": "65746eeaf917f52ffcce6bcbec08eedd592cccdc12472a115576b23dc4570bf0"
+    }
+  ]
+}

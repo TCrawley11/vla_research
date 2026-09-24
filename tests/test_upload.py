@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from carla_data_pipeline.config.schema import UploadConfig
+from carla_data_pipeline.config_utils.schema import UploadConfig
 from carla_data_pipeline.upload import UploadError, upload_cfg_from_sidecar, upload_run
 
 

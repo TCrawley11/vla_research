@@ -6,12 +6,13 @@ a ground-truth block. The same local model writes the question set and then
 answers it. Output is enforced with `response_format` json_schema, code-side
 validators, and retries with feedback.
 
-Serve the model first (`scripts/serve_annotator.sh`); this module is a client.
+Serve the model first (`scripts/serve_annotator_llama.sh`); this module is a client.
 
 Usage:
   python -m carla_data_pipeline annotate
   python -m carla_data_pipeline annotate --h5 data/runs/run43.h5 --limit 2
   python -m carla_data_pipeline.annotate --config configs/annotation/local.yaml
+  python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import hashlib
 import io
 import json
 import logging
+import re
 import sys
 import threading
 import time
@@ -41,38 +43,78 @@ from PIL import Image
 from pydantic import (BaseModel, ConfigDict, Field, FiniteFloat,
                       field_validator, model_validator)
 
-from .build_samples import action_label_from_velocity
+from carla_data_pipeline.annotation_common import (
+    StrictModel,
+    GenerationConfig,
+    LimitsConfig,
+    QaCounts,
+    _prompt_hash,
+    speed_profile,
+    summarize_trajectory,
+    GroundTruth,
+    SamplePayload,
+    encode_jpeg,
+    past_indices,
+    load_sample,
+    user_content,
+    _strict,
+    _array,
+    schema_questions,
+    schema_answers,
+    _nonempty_str,
+    _check_words,
+    _check_captions,
+    _check_typed_items,
+    _is_gt_lookup,
+    _lookup_cap_errors,
+    _is_steer_and_hold,
+    _planning_paraphrase_errors,
+    _perception_slot_errors,
+    validate_questions,
+    _caption_blob,
+    _weather_polarity,
+    _pedestrian_polarity,
+    _caption_content_errors,
+    _contradiction_errors,
+    validate_answers,
+    canonical_order,
+    question_ids,
+    question_listing,
+    question_set_id,
+    ExamplesConfig,
+    ExampleQa,
+    ExampleAnnotation,
+    load_examples,
+    select_examples,
+    render_examples,
+    CAMERAS,
+    QA_TYPES,
+    QaType,
+    ActionLabel,
+    TrajectoryType,
+    ACTION_TEXT,
+    QUESTION_WRITER_SYSTEM,
+    ANNOTATOR_SYSTEM,
+    USER_GT,
+    QUESTION_WRITER_PROMPT_ID,
+    ANNOTATOR_PROMPT_ID
+)
+
+from carla_data_pipeline.annotation_common import (
+    CONTRACT_ID, RESULT_SCHEMA_VERSION, atomic_json, read_json, digest, input_id,
+    cached_questions, cached_result, purpose_questions, quality_issues,
+)
 
 log = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = Path("configs/annotation/local.yaml")
 DEFAULT_REPO_ID = "VLA-uwo-2026/six_cam_1600x900"
 PATH_PREFIX = "runs"
-CAMERAS = ["FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]
-QaType = Literal["perception", "prediction", "planning", "behaviour"]
-QA_TYPES = list(get_args(QaType))
-
-ActionLabel = Literal["STOP", "LEFT_TURN", "RIGHT_TURN",
-                      "SLOW_FORWARD", "FORWARD", "UNKNOWN"]
-TrajectoryType = Literal["STOPPING", "LEFT_CURVE", "RIGHT_CURVE", "STRAIGHT"]
-
-ACTION_TEXT = {
-    "STOP": "Stop and wait before continuing.",
-    "LEFT_TURN": "Turn left while continuing along the route.",
-    "RIGHT_TURN": "Turn right while continuing along the route.",
-    "SLOW_FORWARD": "Continue forward slowly.",
-    "FORWARD": "Continue driving forward.",
-    "UNKNOWN": "Continue along the planned route.",
-}
 
 
 # --------------------------------------------------------------------------
 # config
 # --------------------------------------------------------------------------
-
-class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
 
 class SamplesConfig(StrictModel):
     run: Optional[str] = Field(
@@ -98,7 +140,9 @@ class SamplesConfig(StrictModel):
 
 class InferenceConfig(StrictModel):
     base_url: str = Field("http://127.0.0.1:8001/v1")
-    model: str = Field("qwen3.5-9b-q6_k", min_length=1)
+    model: str = Field("auto", min_length=1)
+    model_revision: str | None = None
+    context_length: int = Field(32768, ge=4096)
     concurrency: int = Field(2, ge=1)
     timeout_sec: int = Field(300, ge=30)
     chat_template_kwargs: dict = Field(
@@ -110,51 +154,13 @@ class InferenceConfig(StrictModel):
         return v.rstrip("/")
 
 
-class GenerationConfig(StrictModel):
-    temperature: float = Field(0.3, ge=0.0, le=2.0)
-    max_tokens: int = Field(4000, ge=256)
-    max_attempts: int = Field(3, ge=1)
-    image_width: int = Field(800, ge=64)
-
-
-class LimitsConfig(StrictModel):
-    answer_max_words: int = Field(30, ge=5)
-    caption_short_max_words: int = Field(25, ge=5)
-    caption_detailed_min_words: int = Field(30, ge=1)
-    caption_detailed_max_words: int = Field(70, ge=5)
-
-    @model_validator(mode="after")
-    def _detailed_range(self):
-        if self.caption_detailed_min_words > self.caption_detailed_max_words:
-            raise ValueError("caption_detailed_min_words exceeds caption_detailed_max_words")
-        return self
-
-
-class QaCounts(StrictModel):
-    perception: int = Field(6, ge=0)
-    prediction: int = Field(4, ge=0)
-    planning: int = Field(4, ge=0)
-    behaviour: int = Field(4, ge=0)
-
-    @model_validator(mode="after")
-    def _some_questions(self):
-        if self.total == 0:
-            raise ValueError("questions.counts must request at least one question")
-        return self
-
-    def as_dict(self) -> dict[str, int]:
-        return {t: getattr(self, t) for t in QA_TYPES}
-
-    @property
-    def total(self) -> int:
-        return sum(self.as_dict().values())
-
-    def text(self) -> str:
-        return ", ".join(f"{n} {t}" for t, n in self.as_dict().items() if n)
-
-
 class QuestionsConfig(StrictModel):
     counts: QaCounts = Field(default_factory=QaCounts)
+    enable_thinking: bool = Field(
+        True, description="thinking for the question-writer call only")
+    max_tokens: Optional[int] = Field(
+        10000, ge=256, description="token cap for question writing; "
+                                  "null uses generation.max_tokens")
 
 
 class AnnotateConfig(StrictModel):
@@ -165,6 +171,8 @@ class AnnotateConfig(StrictModel):
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
     repo_id: str = DEFAULT_REPO_ID
     out_dir: Path = Path("data/annotations")
+    examples: ExamplesConfig | None = None
+    revision: str | None = None
 
 
 def load_config(path: Path) -> AnnotateConfig:
@@ -181,272 +189,8 @@ def load_config(path: Path) -> AnnotateConfig:
 # prompts
 # --------------------------------------------------------------------------
 
-QUESTION_WRITER_SYSTEM = """\
-Write the question set for one sample of an autonomous driving
-dataset collected in the CARLA simulator. Several vision-language models will
-later answer exactly these questions for this sample, using the same camera
-images and ground-truth record you see now, so every question must be
-answerable from those inputs alone. Write questions only, never answers.
-
-Write exactly {n_total} questions, {counts_text}, of these types:
-    perception - Test what is visible in the images (road layout, lane
-                 markings, traffic lights and signs, other road users, weather
-                 and lighting); ask only about things that are visible, or
-                 whose absence is worth stating; never presuppose objects
-                 that are not there,
-    prediction - Test what the recorded future trajectory shows, phrased as
-                 what the ego vehicle is expected to do next,
-    planning   - Test what the ego vehicle should do next and how, given the
-                 ground-truth action,
-    behaviour  - Test the ego vehicle's current motion state and maneuver
-
-Rules:
-1. Be specific to this scene; a question that fits any frame is a weak one.
-2. Ask for a value instead of confirming it: "What is the ego vehicle's
-   current speed?", not "Is the ego vehicle driving at 8.06 m/s?".
-3. Each question stands alone (no "the object above"), and no two questions
-   should ever ask the same thing.
-4. Prefer questions whose answers need the images and the ground truth
-   together (why the recorded action fits what is visible, what to watch for
-   while executing it, how the trajectory relates to the road ahead) over
-   questions answered by copying one ground-truth field; at most one question
-   per type may be a plain lookup of a ground-truth value.
-5. Vary phrasing.
-
-Output a single JSON object, no markdown fences, no commentary:
-{{"questions": [{{"type": ..., "question": ...}}, ...]}} with exactly {n_total}
-items ({counts_text}), type one of "perception", "prediction", "planning",
-"behaviour".
-"""
-
-ANNOTATOR_SYSTEM = """\
-Annotate samples for an autonomous driving dataset collected in the
-CARLA simulator by describing the scene and answering questions as instructed. 
-Each sample contains 6 camera images from the ego vehicle and a ground-truth record 
-from the simulator API. Write captions and answers to a fixed 
-list of questions, used to train a driving vision-language model.
-
-Hard rules:
-1. GROUND TRUTH IS AUTHORITATIVE. The ground-truth block in the user message
-   is exact. Any answer that involves speed, motion state, the driving action,
-   or the future trajectory must agree with it. Copy numeric values verbatim,
-   never estimate them from the images.
-2. PERCEPTION ANSWERS DESCRIBE ONLY WHAT IS VISIBLE in the images: road
-   layout, lane markings, traffic lights and signs, other road users, weather
-   and lighting. Do not mention ground-truth facts that cannot be seen. If
-   ground truth and your visual reading conflict, describe what is visible
-   and do not invent agreement.
-3. No speculation about objects, agents, or signals that are neither visible
-   nor in the ground truth.
-
-The user message lists the questions to answer, each with an id and its type:
-    perception - what is visible in the scene,
-    prediction - what the recorded future trajectory shows, phrased as what
-                 the ego vehicle is expected to do next,
-    planning   - what the ego vehicle should do next and how, consistent with
-                 the ground-truth action,
-    behaviour  - the ego vehicle's current motion state and maneuver
-If a question presupposes something that is neither visible nor in the
-ground truth, say so briefly instead of inventing it.
-
-Style: answers are direct and factual - one or two sentences, at most
-{answer_max_words} words each - with no preamble, no restating of the
-question and no commentary. caption_short: one sentence, at most
-{caption_short_max_words} words. caption_detailed: 2-4 sentences,
-{caption_detailed_min_words}-{caption_detailed_max_words} words. Word limits
-are enforced.
-
-Output a single JSON object, no markdown fences, no commentary, exactly this
-shape:
-{{
-  "caption_short": one sentence stating the ego vehicle's current situation,
-  "caption_detailed": 2-4 sentences describing the visible scene and anything
-                      relevant to driving,
-  "answers": one item per listed question, in the listed order ({n_total} items),
-             each {{"id": the question id, "answer": ...}}
-}}
-"""
-
-USER_GT = """\
-Ground truth for this frame (simulator API, exact):
-- current driving action label: {action_label} ({action_text})
-- ego forward velocity: {v:.2f} m/s
-- ego angular velocity: {w:.3f} rad/s (positive = left turn)
-- dominant action over the past {past_window_sec:.1f} s: {past_action}
-- recorded future trajectory (next {horizon_sec:.0f} s): {traj_summary}
-
-The images above are the current key frame from the """ + \
-    ", ".join(CAMERAS[:-1]) + " and " + CAMERAS[-1] + " cameras.\n"
-
-
-def _prompt_hash(*texts: str) -> str:
-    return hashlib.sha1("\n".join(texts).encode()).hexdigest()[:12]
-
-
-QUESTION_WRITER_PROMPT_ID = _prompt_hash(QUESTION_WRITER_SYSTEM, USER_GT)
-ANNOTATOR_PROMPT_ID = _prompt_hash(ANNOTATOR_SYSTEM, USER_GT)
-
-
-# --------------------------------------------------------------------------
-# ground truth
-# --------------------------------------------------------------------------
-
-MOVING_SEG_M = 0.15
-
-
-def speed_profile(waypoints: np.ndarray, period_sec: float) -> str:
-    pts = np.vstack([[0.0, 0.0], np.asarray(waypoints, dtype=float)])
-    seg = np.linalg.norm(np.diff(pts, axis=0), axis=1)
-    speeds = seg / period_sec
-    moving = seg > MOVING_SEG_M
-    if not moving.any():
-        return "stationary throughout"
-    first, last = float(speeds[0]), float(speeds[-1])
-    if moving[0] and not moving[-1]:
-        stop_step = int(np.argmax(~moving))
-        stop_m = float(pts[stop_step][0])
-        return (f"decelerating from about {first:.1f} m/s to a full stop after "
-                f"about {stop_m:.1f} m (within about {stop_step * period_sec:.1f} s)")
-    if not moving[0] and moving[-1]:
-        start_step = int(np.argmax(moving))
-        return (f"pulling away from standstill after about "
-                f"{start_step * period_sec:.1f} s, reaching about {last:.1f} m/s")
-    if last < 0.7 * first:
-        return f"slowing from about {first:.1f} m/s to about {last:.1f} m/s"
-    if last > 1.4 * first:
-        return f"accelerating from about {first:.1f} m/s to about {last:.1f} m/s"
-    return f"at a roughly steady {speeds.mean():.1f} m/s"
-
-
-def summarize_trajectory(waypoints: np.ndarray, traj_type: str,
-                         horizon_sec: float, period_sec: float = 0.5) -> str:
-    fwd, lat = float(waypoints[-1][0]), float(waypoints[-1][1])
-    if traj_type == "STOPPING":
-        return (f"the vehicle stays essentially stationary "
-                f"({fwd:.1f} m forward displacement over {horizon_sec:.0f} s)")
-    side = "left" if lat > 0 else "right"
-    curve = {"STRAIGHT": "in a straight line",
-             "LEFT_CURVE": "curving left",
-             "RIGHT_CURVE": "curving right"}.get(traj_type, "")
-    return (f"the vehicle moves {fwd:.1f} m forward {curve}, "
-            f"{speed_profile(waypoints, period_sec)}, ending "
-            f"{abs(lat):.1f} m to the {side} of its current heading")
-
-
-class GroundTruth(StrictModel):
-    sample_id: str = Field(min_length=1)
-    sample_index: int = Field(ge=0)
-    key_frame_id: int = Field(ge=0)
-    action_label: ActionLabel
-    past_action: ActionLabel
-    trajectory_type: TrajectoryType
-    v: FiniteFloat
-    w: FiniteFloat
-    past_window_sec: FiniteFloat = Field(gt=0)
-    horizon_sec: FiniteFloat = Field(gt=0)
-    waypoint_period_sec: FiniteFloat = Field(gt=0)
-    future_waypoints_ego_frame: list[tuple[FiniteFloat, FiniteFloat]] = \
-        Field(min_length=1)
-
-    @property
-    def action_text(self) -> str:
-        return ACTION_TEXT[self.action_label]
-
-    def traj_summary(self) -> str:
-        return summarize_trajectory(
-            np.asarray(self.future_waypoints_ego_frame, dtype=float),
-            self.trajectory_type, self.horizon_sec, self.waypoint_period_sec)
-
-    def prompt_block(self) -> str:
-        return USER_GT.format(
-            action_label=self.action_label, action_text=self.action_text,
-            v=self.v, w=self.w,
-            past_window_sec=self.past_window_sec, past_action=self.past_action,
-            horizon_sec=self.horizon_sec, traj_summary=self.traj_summary())
-
-    def action_block(self) -> dict:
-        stopped = self.action_label == "STOP"
-        return {"action_text": self.action_text,
-                "action_label": self.action_label,
-                "linear_velocity_target": 0.0 if stopped else round(self.v, 2),
-                "angular_velocity_target": 0.0 if stopped else round(self.w, 3)}
-
-    def record(self) -> dict:
-        return self.model_dump(mode="json")
-
-
-# --------------------------------------------------------------------------
-# samples: .h5 -> SamplePayload
-# --------------------------------------------------------------------------
-
-@dataclass
-class SamplePayload:
-    gt: GroundTruth
-    image_blocks: list
-    frames: dict
-
-
-def encode_jpeg(rgb: np.ndarray, width: int) -> bytes:
-    img = Image.fromarray(rgb)
-    if img.width > width:
-        img = img.resize((width, round(img.height * width / img.width)))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85)
-    return buf.getvalue()
-
-
-def past_indices(clip: np.ndarray) -> np.ndarray:
-    return clip[: len(clip) // 2 + 1]
-
-
-def load_sample(f: h5py.File, sample: int, image_width: int) -> SamplePayload:
-    si = f["sample_index"]
-    key = int(si["key_index"][sample])
-    cols = [c.decode() if isinstance(c, bytes) else c
-            for c in f["telemetry/data"].attrs["columns"]]
-    tel = {c: f["telemetry/data"][:, i] for i, c in enumerate(cols)}
-
-    def as_str(x):
-        return x.decode() if isinstance(x, bytes) else str(x)
-
-    clip = si["clip_frame_indices"][sample]
-    labels = [action_label_from_velocity(float(tel["v"][i]), float(tel["w"][i]))
-              for i in past_indices(clip)]
-    clip_sec = float(f.attrs.get("clip_sec", 3.0))
-
-    gt = GroundTruth(
-        sample_id=as_str(si["sample_id"][sample]),
-        sample_index=sample,
-        key_frame_id=int(si["key_frame_id"][sample]),
-        action_label=as_str(f["action/action_label"][sample]),
-        past_action=Counter(labels).most_common(1)[0][0],
-        trajectory_type=as_str(f["trajectory/trajectory_type"][sample]),
-        v=float(tel["v"][key]), w=float(tel["w"][key]),
-        past_window_sec=clip_sec / 2,
-        horizon_sec=float(f.attrs.get("horizon_sec", 3.0)),
-        waypoint_period_sec=float(f.attrs.get("waypoint_period_sec", 0.5)),
-        future_waypoints_ego_frame=[
-            (float(x), float(y))
-            for x, y in f["trajectory/future_waypoints_ego_frame"][sample]])
-
-    frames = {cam: encode_jpeg(f["images"][cam][key], image_width) for cam in CAMERAS}
-    image_blocks = []
-    for cam in CAMERAS:
-        b64 = base64.b64encode(frames[cam]).decode()
-        image_blocks += [
-            {"type": "text", "text": f"Image from the {cam} camera:"},
-            {"type": "image_url",
-             "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]
-    return SamplePayload(gt=gt, image_blocks=image_blocks, frames=frames)
-
-
-def user_content(payload: SamplePayload, tail: str) -> list:
-    return payload.image_blocks + [
-        {"type": "text", "text": payload.gt.prompt_block() + "\n" + tail}]
-
-
-def list_run_paths(api: HfApi, repo_id: str) -> list[str]:
-    files = [f for f in api.list_repo_files(repo_id, repo_type="dataset")
+def list_run_paths(api: HfApi, repo_id: str, revision: str | None = None) -> list[str]:
+    files = [f for f in api.list_repo_files(repo_id, repo_type="dataset", revision=revision)
              if f.startswith(f"{PATH_PREFIX}/") and f.endswith(".h5")]
     if not files:
         sys.exit(f"no .h5 runs found in {repo_id}/{PATH_PREFIX}")
@@ -463,18 +207,19 @@ def resolve_run_labels(api: HfApi | None, cfg: AnnotateConfig,
     assert api is not None
     if cfg.samples.run:
         path = f"{PATH_PREFIX}/{cfg.samples.run}.h5"
-        available = list_run_paths(api, cfg.repo_id)
+        available = list_run_paths(api, cfg.repo_id, cfg.revision)
         if path not in available:
             sys.exit(f"{path} not in repo; available: {available}")
         return [path]
-    return list_run_paths(api, cfg.repo_id)
+    return list_run_paths(api, cfg.repo_id, cfg.revision)
 
 
-def local_h5(repo_id: str, run_label: str, h5: Path | None) -> str:
+def local_h5(repo_id: str, run_label: str, h5: Path | None,
+             revision: str | None = None) -> str:
     if h5 is not None:
         return str(h5)
     log.info("downloading %s/%s", repo_id, run_label)
-    return hf_hub_download(repo_id, run_label, repo_type="dataset")
+    return hf_hub_download(repo_id, run_label, repo_type="dataset", revision=revision)
 
 
 def pick_samples(n: int, cfg: SamplesConfig, run_path: str) -> list[int]:
@@ -493,135 +238,6 @@ def pick_samples(n: int, cfg: SamplesConfig, run_path: str) -> list[int]:
 # output checks
 # --------------------------------------------------------------------------
 
-def _strict(name: str, properties: dict) -> dict:
-    return {"name": name, "strict": True,
-            "schema": {"type": "object", "additionalProperties": False,
-                       "required": list(properties), "properties": properties}}
-
-
-def _array(n: int, item_props: dict) -> dict:
-    return {"type": "array", "minItems": n, "maxItems": n,
-            "items": {"type": "object", "additionalProperties": False,
-                      "required": list(item_props), "properties": item_props}}
-
-
-def schema_questions(n_total: int) -> dict:
-    return _strict("question_set", {
-        "questions": _array(n_total, {"type": {"type": "string", "enum": QA_TYPES},
-                                      "question": {"type": "string"}})})
-
-
-def schema_answers(ids: list[str]) -> dict:
-    return _strict("annotation", {
-        "caption_short": {"type": "string"},
-        "caption_detailed": {"type": "string"},
-        "answers": _array(len(ids), {"id": {"type": "string", "enum": ids},
-                                     "answer": {"type": "string"}})})
-
-
-def _nonempty_str(obj: dict, key: str, where: str, errors: list[str]) -> None:
-    if not isinstance(obj.get(key), str) or not obj[key].strip():
-        errors.append(f"{where}'{key}' missing or not a non-empty string")
-
-
-def _check_words(text, where: str, lo: int, hi: int, errors: list[str]) -> None:
-    if not isinstance(text, str):
-        return
-    n = len(text.split())
-    if n > hi:
-        errors.append(f"{where} has {n} words (max {hi})")
-    elif n < lo:
-        errors.append(f"{where} has {n} words (min {lo})")
-
-
-def _check_captions(obj: dict, limits: LimitsConfig, errors: list[str]) -> None:
-    for key in ("caption_short", "caption_detailed"):
-        _nonempty_str(obj, key, "", errors)
-    _check_words(obj.get("caption_short"), "caption_short", 1,
-                 limits.caption_short_max_words, errors)
-    _check_words(obj.get("caption_detailed"), "caption_detailed",
-                 limits.caption_detailed_min_words,
-                 limits.caption_detailed_max_words, errors)
-
-
-def _check_typed_items(items, counts: dict[str, int], fields: tuple[str, ...],
-                       name: str) -> list[str]:
-    errors = []
-    found = dict.fromkeys(QA_TYPES, 0)
-    for i, p in enumerate(items):
-        if not isinstance(p, dict):
-            errors.append(f"{name}[{i}] is not an object")
-            continue
-        t = p.get("type")
-        if t not in QA_TYPES:
-            errors.append(f"{name}[{i}].type '{t}' not in {QA_TYPES}")
-        else:
-            found[t] += 1
-        for key in fields:
-            _nonempty_str(p, key, f"{name}[{i}].", errors)
-    for t, c in found.items():
-        if c != counts[t]:
-            errors.append(f"{c} '{t}' items (need exactly {counts[t]})")
-    return errors
-
-
-def validate_questions(obj, counts: dict[str, int]) -> list[str]:
-    if not isinstance(obj, dict):
-        return ["top level is not a JSON object"]
-    qs = obj.get("questions")
-    if not isinstance(qs, list):
-        return ["'questions' missing or not a list"]
-    errors = _check_typed_items(qs, counts, ("question",), "questions")
-    texts = [q.get("question", "").strip().lower() for q in qs if isinstance(q, dict)]
-    if len(set(texts)) != len(texts):
-        errors.append("duplicate questions")
-    return errors
-
-
-def validate_answers(obj, ids: list[str], limits: LimitsConfig) -> list[str]:
-    if not isinstance(obj, dict):
-        return ["top level is not a JSON object"]
-    errors = []
-    _check_captions(obj, limits, errors)
-    answers = obj.get("answers")
-    if not isinstance(answers, list):
-        return errors + ["'answers' missing or not a list"]
-    seen = []
-    for i, a in enumerate(answers):
-        if not isinstance(a, dict):
-            errors.append(f"answers[{i}] is not an object")
-            continue
-        seen.append(a.get("id"))
-        _nonempty_str(a, "answer", f"answers[{i}].", errors)
-        _check_words(a.get("answer"), f"answers[{a.get('id', i)}].answer", 1,
-                     limits.answer_max_words, errors)
-    missing = [i for i in ids if i not in seen]
-    extra = [i for i in seen if i not in ids]
-    dupes = sorted({i for i in seen if seen.count(i) > 1})
-    if missing:
-        errors.append(f"unanswered question ids: {missing}")
-    if extra:
-        errors.append(f"unknown question ids: {extra}")
-    if dupes:
-        errors.append(f"question ids answered more than once: {dupes}")
-    return errors
-
-
-def canonical_order(items: list[dict]) -> list[dict]:
-    return sorted(items, key=lambda p: QA_TYPES.index(p["type"]))
-
-
-def question_ids(n_total: int) -> list[str]:
-    return [f"q{i:02d}" for i in range(1, n_total + 1)]
-
-
-def question_listing(questions: list[dict]) -> str:
-    return "\n".join(f"{q['id']} [{q['type']}] {q['question']}" for q in questions)
-
-
-def question_set_id(questions: list[dict]) -> str:
-    blob = json.dumps([[q["type"], q["question"]] for q in questions])
-    return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
 
 # --------------------------------------------------------------------------
@@ -648,6 +264,7 @@ class VllmClient:
         self._timeout = cfg.timeout_sec
         self._chat_template_kwargs = cfg.chat_template_kwargs
         self.served_model = cfg.model
+        self.context_length = cfg.context_length
 
     def ping(self, model: str) -> None:
         req = urllib.request.Request(self._models_url, method="GET")
@@ -655,18 +272,24 @@ class VllmClient:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 body = json.loads(resp.read())
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
-            sys.exit(f"vLLM not reachable at {self._url}: {exc}\n"
-                     "start it with scripts/serve_annotator.sh")
+            sys.exit(f"local server not reachable at {self._url}: {exc}\n"
+                     "start it with scripts/serve_annotator_llama.sh")
         ids = [m.get("id") for m in body.get("data", [])]
-        if model in ids or not ids:
-            self.served_model = model
-            return
-        if len(ids) == 1:
-            log.warning("config model %r not served; using %r", model, ids[0])
-            self.served_model = ids[0]
-            return
-        sys.exit(f"served models {ids} do not include {model!r}; "
-                 "check inference.model vs --served-model-name")
+        if model == "auto" and len(ids) == 1:
+            model = ids[0]
+        if model not in ids:
+            sys.exit(f"served models {ids} do not include {model!r}; "
+                     "set inference.model to the actual model id or auto for a single-model server")
+        self.served_model = model
+        info = next(m for m in body["data"] if m.get("id") == model)
+        # Model-list timestamps change on every server restart. Keep model
+        # properties in the cache identity, not the process creation time.
+        self.model_metadata = {k: v for k, v in info.items() if k != "created"}
+        self.provider = info.get("owned_by", "local")
+        advertised_context = info.get("max_model_len") or (info.get("meta") or {}).get("n_ctx")
+        if isinstance(advertised_context, int):
+            self.context_length = advertised_context
+
 
     def _post(self, body: dict) -> dict:
         req_body = json.dumps(body).encode()
@@ -684,20 +307,25 @@ class VllmClient:
                             exc.code, i, self.HTTP_RETRIES - 1, 15 * i)
             except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
                 if i == self.HTTP_RETRIES:
-                    raise RuntimeError(f"vLLM unreachable: {exc}") from exc
+                    raise RuntimeError(f"local server unreachable: {exc}") from exc
                 log.warning("%s: %s; retry %s/%s in %ss",
                             type(exc).__name__, exc, i, self.HTTP_RETRIES - 1, 15 * i)
             time.sleep(15 * i)
-        raise RuntimeError("vLLM unreachable")
+        raise RuntimeError("local server unreachable")
 
     def call(self, model: str, system: str, content: list, json_schema: dict,
-             validate, gen: GenerationConfig) -> tuple[dict, dict]:
+             validate, gen: GenerationConfig,
+             chat_template_kwargs: dict | None = None) -> tuple[dict, dict]:
+        if gen.max_tokens >= self.context_length:
+            raise RuntimeError("output token budget leaves no room for images and prompt; increase context_length")
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": content}]
         response_format = {"type": "json_schema", "json_schema": json_schema}
         usage = {"prompt_tokens": 0, "completion_tokens": 0,
                  "reasoning_tokens": 0, "cost_usd": 0.0}
         errors_seen = []
+        template_kwargs = (chat_template_kwargs if chat_template_kwargs is not None
+                           else self._chat_template_kwargs)
 
         def add_usage(resp: dict) -> None:
             u = resp.get("usage") or {}
@@ -710,7 +338,7 @@ class VllmClient:
             body = {"model": self.served_model, "messages": messages,
                     "max_tokens": gen.max_tokens, "temperature": gen.temperature,
                     "response_format": response_format,
-                    "chat_template_kwargs": self._chat_template_kwargs}
+                    "chat_template_kwargs": template_kwargs}
             try:
                 resp = None
                 for i in range(1, self.HTTP_RETRIES + 1):
@@ -727,12 +355,14 @@ class VllmClient:
                     time.sleep(15 * i)
             except urllib.error.HTTPError as exc:
                 detail = exc.read().decode(errors="replace")[:500]
-                if exc.code == 400 and response_format.get("type") == "json_schema":
+                if (exc.code == 400 and response_format.get("type") == "json_schema"
+                        and any(x in detail.lower() for x in ("not support", "unsupported"))
+                        and any(x in detail.lower() for x in ("json_schema", "response_format"))):
                     log.warning("json_schema rejected (%s); falling back to json_object",
                                 detail[:120])
                     response_format = {"type": "json_object"}
                     continue
-                raise RuntimeError(f"vLLM HTTP {exc.code}: {detail}") from exc
+                raise RuntimeError(f"local server HTTP {exc.code}: {detail}") from exc
 
             choice = resp["choices"][0]
             raw = choice["message"].get("content") or ""
@@ -746,7 +376,7 @@ class VllmClient:
                                   "length); raise generation.max_tokens or disable thinking")
             if not errors:
                 return obj, {"attempts": attempt, "usage": usage,
-                             "provider": "vllm", "errors_seen": errors_seen,
+                             "provider": getattr(self, "provider", "local"), "errors_seen": errors_seen,
                              "response_format": response_format["type"]}
 
             errors_seen.append(errors)
@@ -774,6 +404,41 @@ class Annotator:
         self.failures: list[tuple[str, str]] = []
         self._h5_lock = threading.Lock()
         self._fail_lock = threading.Lock()
+        self.examples = load_examples(cfg.examples, cfg.limits) if cfg.examples else []
+        self.examples_id = (
+            digest({"config": cfg.examples.model_dump(mode="json"),
+                    "pool": [e.model_dump(mode="json") for e in self.examples]})
+            if cfg.examples else None)
+
+    def _identity(self, stage: str) -> str:
+        cfg = self.cfg
+        return digest({"contract": CONTRACT_ID, "stage": stage,
+                       "model": cfg.inference.model, "inference": cfg.inference.model_dump(),
+                       "server": getattr(self.client, "model_metadata", {}),
+                       "generation": cfg.generation.model_dump(),
+                       "questions": cfg.questions.model_dump(), "limits": cfg.limits.model_dump(),
+                       "examples_config": cfg.examples.model_dump() if cfg.examples else None,
+                       "examples": [e.model_dump(mode="json") for e in self.examples],
+                       "repo_id": cfg.repo_id, "revision": cfg.revision})
+
+    def _examples_suffix(self, sample_id: str, stage: str) -> str:
+        if not self.examples or not getattr(self.cfg.examples, stage):
+            return ""
+        return render_examples(select_examples(self.examples, self.cfg.examples.k, sample_id), stage)
+
+    def prompt_id(self, stage: str) -> str:
+        base = QUESTION_WRITER_PROMPT_ID if stage == "questions" else ANNOTATOR_PROMPT_ID
+        if not self.examples_id or not getattr(self.cfg.examples, stage):
+            return base
+        return _prompt_hash(base, self.examples_id)
+
+    def example_record(self, sample_id: str, stage: str) -> dict | None:
+        if not self.examples or not getattr(self.cfg.examples, stage):
+            return None
+        selected = select_examples(self.examples, self.cfg.examples.k, sample_id)
+        return {"k": self.cfg.examples.k, "pool_id": self.examples_id,
+                "scenes": [e.scene for e in selected]}
+
 
     def question_path(self, sample_id: str) -> Path:
         return self.cfg.out_dir / "questions" / f"{sample_id}.json"
@@ -782,35 +447,37 @@ class Annotator:
         suffix = self.cfg.inference.model.split("/")[-1]
         return self.cfg.out_dir / f"{sample_id}__{suffix}.json"
 
-    def load_question_set(self, path: Path) -> dict | None:
-        if not path.exists():
+    def load_question_set(self, path: Path, payload: SamplePayload | None = None) -> dict | None:
+        if payload is None:
             return None
-        qs = json.loads(path.read_text())
-        if (qs.get("model") == self.cfg.inference.model
-                and qs.get("question_prompt_id") == QUESTION_WRITER_PROMPT_ID
-                and qs.get("counts") == self.cfg.questions.counts.as_dict()):
-            return qs
-        return None
+        return cached_questions(path, self._identity("questions"),
+                                self.cfg.questions.counts.as_dict(), input_id(payload))
 
     def write_question_set(self, payload: SamplePayload, path: Path) -> dict:
         counts = self.cfg.questions.counts
         system = QUESTION_WRITER_SYSTEM.format(n_total=counts.total,
                                                counts_text=counts.text())
+        system += self._examples_suffix(payload.gt.sample_id, "questions")
         content = user_content(payload, "Write the question set JSON now.")
+        gen = self.cfg.generation
+        if self.cfg.questions.max_tokens is not None:
+            gen = gen.model_copy(update={"max_tokens": self.cfg.questions.max_tokens})
         obj, meta = self.client.call(
             self.cfg.inference.model, system, content,
             schema_questions(counts.total),
             lambda o: validate_questions(o, counts.as_dict()),
-            self.cfg.generation)
-        questions = [{"id": qid, "type": q["type"], "question": q["question"].strip()}
-                     for qid, q in zip(question_ids(counts.total),
-                                       canonical_order(obj["questions"]))]
+            gen,
+            chat_template_kwargs={
+                "enable_thinking": self.cfg.questions.enable_thinking})
+        questions = purpose_questions(obj["questions"])
         qs = {"sample_id": payload.gt.sample_id, "model": self.cfg.inference.model,
-              "question_prompt_id": QUESTION_WRITER_PROMPT_ID,
+              "question_prompt_id": self.prompt_id("questions"),
               "counts": counts.as_dict(),
-              "id": question_set_id(questions), "questions": questions, "meta": meta}
+              "id": question_set_id(questions), "questions": questions, "meta": meta,
+              "examples": self.example_record(payload.gt.sample_id, "questions"),
+              "identity": self._identity("questions"), "input_id": input_id(payload)}
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(qs, indent=2))
+        atomic_json(path, qs)
         return qs
 
     def annotate(self, payload: SamplePayload, qs: dict) -> tuple[dict, dict]:
@@ -818,45 +485,40 @@ class Annotator:
         ids = [q["id"] for q in questions]
         system = ANNOTATOR_SYSTEM.format(n_total=len(ids),
                                          **self.cfg.limits.model_dump())
+        system += self._examples_suffix(payload.gt.sample_id, "answers")
         listing = question_listing(questions)
         content = user_content(payload, "Questions to answer:\n" + listing
                                + "\n\nWrite the annotation JSON now.")
         obj, meta = self.client.call(
             self.cfg.inference.model, system, content, schema_answers(ids),
-            lambda o: validate_answers(o, ids, self.cfg.limits),
+            lambda o: validate_answers(o, ids, self.cfg.limits, questions, payload.gt),
             self.cfg.generation)
+        meta["quality_issues"] = quality_issues(obj, questions)
         by_id = {a["id"]: a["answer"].strip() for a in obj["answers"]}
         return ({"caption_short": obj["caption_short"],
                  "caption_detailed": obj["caption_detailed"],
                  "qa_pairs": [{**q, "answer": by_id[q["id"]]} for q in questions]},
                 meta)
 
-    def result_is_current(self, path: Path, qs: dict) -> bool:
-        if not path.exists():
-            return False
-        try:
-            d = json.loads(path.read_text())
-        except json.JSONDecodeError:
-            return False
-        cfg = self.cfg
-        return (d.get("model") == cfg.inference.model
-                and d.get("prompt_id") == ANNOTATOR_PROMPT_ID
-                and d.get("limits") == cfg.limits.model_dump()
-                and d.get("qa_counts") == cfg.questions.counts.as_dict()
-                and (d.get("question_set") or {}).get("id") == qs["id"])
+    def result_is_current(self, path: Path, qs: dict, payload: SamplePayload | None = None) -> bool:
+        return cached_result(path, self._identity("answers"), qs, self.cfg.limits, payload)
 
     def process_sample(self, f: h5py.File, sample: int, frames_dir: Path,
                        force: bool, regenerate_questions: bool) -> None:
         with self._h5_lock:
             payload = load_sample(f, sample, self.cfg.generation.image_width)
+        self.process_payload(payload, frames_dir, force, regenerate_questions)
+
+    def process_payload(self, payload: SamplePayload, frames_dir: Path,
+                        force: bool = False, regenerate_questions: bool = False) -> None:
         gt = payload.gt
         for cam, data in payload.frames.items():
             frame_path = frames_dir / f"{gt.sample_id}_{cam}.jpg"
-            if not frame_path.exists():
+            if not frame_path.exists() or frame_path.read_bytes() != data:
                 frame_path.write_bytes(data)
 
         q_path = self.question_path(gt.sample_id)
-        qs = None if regenerate_questions else self.load_question_set(q_path)
+        qs = None if regenerate_questions else self.load_question_set(q_path, payload)
         if qs is None:
             log.info("writing question set for %s (gt %s)", gt.sample_id, gt.action_label)
             try:
@@ -870,7 +532,7 @@ class Annotator:
                      q_path, qs["id"], qs["meta"]["attempts"])
 
         out_path = self.result_path(gt.sample_id)
-        if not force and self.result_is_current(out_path, qs):
+        if not force and self.result_is_current(out_path, qs, payload):
             log.info("%s: current, skipping", gt.sample_id)
             return
         log.info("annotating %s (gt %s)", gt.sample_id, gt.action_label)
@@ -882,17 +544,19 @@ class Annotator:
                 self.failures.append((gt.sample_id, str(exc)))
             return
         annotation["action"] = gt.action_block()
-        out_path.write_text(json.dumps({
+        atomic_json(out_path, {
+            "schema_version": RESULT_SCHEMA_VERSION,
+            "identity": self._identity("answers"), "input_id": input_id(payload),
             "model": self.cfg.inference.model,
-            "prompt_id": ANNOTATOR_PROMPT_ID,
+            "prompt_id": self.prompt_id("answers"),
             "limits": self.cfg.limits.model_dump(),
             "qa_counts": self.cfg.questions.counts.as_dict(),
             "question_set": {"id": qs["id"], "model": qs["model"]},
-            "examples": None,
+            "examples": self.example_record(gt.sample_id, "answers"),
             "ground_truth": gt.record(),
             "annotation": annotation,
             "meta": meta,
-        }, indent=2))
+        })
         log.info("  -> %s (%s attempt(s), %s out tokens)",
                  out_path, meta["attempts"], meta["usage"]["completion_tokens"])
 
@@ -915,7 +579,7 @@ class Annotator:
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        description="Annotate HF dataset samples with a local vLLM endpoint.")
+        description="Annotate HF dataset samples with a local OpenAI-compatible endpoint.")
     ap.add_argument("--config", type=Path, default=DEFAULT_CONFIG,
                     help=f"annotation config (default {DEFAULT_CONFIG})")
     ap.add_argument("--h5", type=Path,
@@ -948,7 +612,7 @@ def apply_cli_overrides(cfg: AnnotateConfig, args) -> AnnotateConfig:
         samples = samples.model_copy(update={"limit": args.limit})
     if samples.indices is not None and samples.run is None and args.h5 is None:
         sys.exit("samples.indices requires samples.run or --h5")
-    return cfg.model_copy(update={"samples": samples})
+    return AnnotateConfig.model_validate({**cfg.model_dump(), "samples": samples.model_dump()})
 
 
 def run(args) -> int:
@@ -956,6 +620,7 @@ def run(args) -> int:
     cfg.out_dir.mkdir(parents=True, exist_ok=True)
     client = VllmClient(cfg.inference)
     client.ping(cfg.inference.model)
+    cfg.inference.model = client.served_model
     annotator = Annotator(cfg, client)
 
     remaining = cfg.samples.limit
@@ -963,7 +628,7 @@ def run(args) -> int:
     for run_path in resolve_run_labels(api, cfg, args.h5):
         if remaining is not None and remaining <= 0:
             break
-        h5_path = local_h5(cfg.repo_id, run_path, args.h5)
+        h5_path = local_h5(cfg.repo_id, run_path, args.h5, cfg.revision)
         with h5py.File(h5_path, "r") as f:
             n = len(f["sample_index/sample_id"])
             picks = pick_samples(n, cfg.samples, run_path)

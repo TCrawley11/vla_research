@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from carla_data_pipeline.config.load import ConfigError, load_collect_config
-from carla_data_pipeline.config.schema import CollectConfig
+from carla_data_pipeline.config_utils.load import ConfigError, load_collect_config
+from carla_data_pipeline.config_utils.schema import CollectConfig
 
 REPO = Path(__file__).resolve().parents[1]
 

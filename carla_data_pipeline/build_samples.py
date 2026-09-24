@@ -1,16 +1,11 @@
-"""Stage 2: build the S-axis sample groups into a run .h5 (offline, no CARLA).
+"""Stage 2: build the sample groups into a run .h5 (offline, no CARLA).
 
 Opens `data/runs/<run_id>.h5` r+, reads the sampling parameters from the root
 attrs written by Stage 1, and appends `/sample_index`, `/trajectory` and
 `/action` per `data/README.md`. Re-running replaces the sample groups, so the
 step is idempotent. The run's `.json` sidecar is updated with the sample count.
 
-Absorbs the old root-level dataset_builder.py: `action_label_from_velocity`
-and the sampling/slicing responsibilities live here now, operating on arrays
-in the h5 instead of dicts destined for JSON.
-
 Coordinate convention: ROS REP-103 (x forward, y left, yaw rad, +w = left),
-already applied by Stage 1 at log time.
 
 Index spaces: N = raw-fps frames, S = built samples. A key frame qualifies
 only if the *full future horizon* fits inside the log - the horizon extends
@@ -39,7 +34,6 @@ TURN_W = 0.15   # rad/s (~8.6 deg/s); above this magnitude -> turning
 CURVE_YAW = 0.30  # rad (~17 deg)
 
 # final forward displacement over the horizon below which the trajectory is
-# STOPPING (car-scale analogue of the instruction document's 0.05 m lab rule)
 STOP_TRAJ_DIST = 1.0  # m
 
 # fixed id mapping per data/README.md: 0..5 in this order

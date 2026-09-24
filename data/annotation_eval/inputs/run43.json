@@ -1,0 +1,27 @@
+{
+  "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+  "width": 800,
+  "count": 2,
+  "samples": [
+    {
+      "sample_id": "run43_000165",
+      "run": "run43",
+      "map": "Town04",
+      "split": "examples",
+      "path": "examples/run43_000165/sample.json",
+      "action": "RIGHT_TURN",
+      "future_motion": "moving at a roughly steady 8.1 m/s; 23.4 m forward displacement over 3 s curving right, ending 5.3 m to the right of its current heading",
+      "input_id": "94cd226208ee12eaa675773d90aafc5bbf3649da910ce4506772b6a2c7e3fd80"
+    },
+    {
+      "sample_id": "run43_000345",
+      "run": "run43",
+      "map": "Town04",
+      "split": "examples",
+      "path": "examples/run43_000345/sample.json",
+      "action": "FORWARD",
+      "future_motion": "decelerating from about 6.2 m/s to a full stop after about 7.4 m forward displacement (within about 1.5 s); 7.4 m forward displacement over 3 s in a straight line, ending 0.6 m to the right of its current heading",
+      "input_id": "7e5dc49c4d6cdaf8358dd57f0bd8b11c0b5dc8641c69393dbbfd88487c5e227e"
+    }
+  ]
+}

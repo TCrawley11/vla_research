@@ -60,16 +60,18 @@ python -m carla_data_pipeline man
 python -m carla_data_pipeline man config
 ```
 
-## Local annotation (Qwen3.5-9B Q6_K)
+## Local annotation (quantized 27B)
 
-Six-camera samples from the team HF dataset, annotated by a local vLLM
-server. Question writing and answering use the same GGUF. Qwen3.5 needs the
-git-pinned `vllm-gguf-plugin` (its generic GGUF mapper cannot load Qwen's
-hybrid GDN weights) and `mmproj-BF16.gguf` beside the backbone.
+Six-camera samples from the team HF dataset, annotated by a local
+OpenAI-compatible server. Question writing and answering use the same model.
+The current local launcher uses the cached Qwen3.6-27B Q3_K_M and its BF16
+vision projector through llama.cpp. It pins the cached model revision and
+does not download weights. Set `LLAMA_SERVER`, `MODEL`, and `MMPROJ` to use
+other executable or weight paths. A compatible vLLM endpoint also works;
+`serve_annotator.sh` requires explicit model, tokenizer, and serving settings.
 
 ```sh
-uv sync --group infer
-scripts/serve_annotator.sh          # downloads GGUFs into models/ if missing
+scripts/serve_annotator_llama.sh    # leave running in another terminal
 python -m carla_data_pipeline annotate
 python -m carla_data_pipeline annotate --h5 data/runs/run43.h5 --limit 1
 uv run python scripts/build_inspection.py --dir data/annotations
@@ -78,3 +80,50 @@ uv run python scripts/build_inspection.py --dir data/annotations
 Default walk is every `runs/*.h5`, samples 1..n-1 in order. `--run`,
 `--indices`, and `--limit` slice that walk. Config:
 `configs/annotation/local.yaml`.
+
+The writer produces 18 short questions: 6 perception, 4 prediction,
+4 planning, and 4 behaviour, each with an assigned purpose. Both stages
+receive one of 12 reviewed examples from a different source run. No camera
+has priority. Images describe the present scene; telemetry describes current
+motion; waypoints describe recorded future motion. The schema-v2 action
+fields use `linear_velocity_current` and `angular_velocity_current`, replacing
+the misleading `*_target` names. Planning remains grounded in the future path.
+
+JSON shape, type counts, word limits, duplicate IDs, and explicit current
+numeric lookups are enforced with retries. Camera/agent coverage, repeated or
+causal questions, and potential contradictions are review flags shown in the
+inspection page. They are deliberately not automatic visual-accuracy gates.
+Cache identities include input pixels, ground truth, shared logic,
+configuration, model metadata, and examples; incomplete or malformed caches
+regenerate automatically. The shipped config pins `inference.model_revision`;
+change it whenever weights change under the same served alias.
+
+### Frozen local evaluation
+
+The preparation script exports compact samples from a pinned dataset revision
+without downloading entire HDF5 runs. Its 12 example sources and 20 evaluation
+samples come from disjoint runs across five towns. Both variants generate their
+own questions, so this compares the complete pipeline, not answer quality on a
+shared question set. Keep the hosted benchmark for that separate comparison.
+
+```sh
+# Only needed when preparing or intentionally replacing the frozen inputs:
+.venv/bin/python scripts/prepare_annotation_eval.py --revision 3e3d9aea3083e530505a47e596d493afe005719a
+
+# Six varied scenes: slowing, right turn, stopped, highway acceleration,
+# braking to a stop, and left turn. Run with the local server above.
+.venv/bin/python scripts/run_local_annotation_eval.py \
+  --sample-ids run06_000345,run06_000615,run07_000795,run08_000555,run09_000405,run10_000285 \
+  --model-revision 5cb35eb3dcbf52dbce5f87dbc64df6aaffadcace/Qwen3.6-27B-Q3_K_M.gguf \
+  --out-dir data/annotation_eval/baseline_2026-09-18
+
+# Omit --sample-ids for all 20 samples. --variant baseline or examples runs
+# one variant; the default is both. Repeat the same command to resume.
+```
+
+`evaluation.json` records the selected inputs, resolved configuration, model,
+completion counts, retries, and review flags after each sample. Each completed
+variant has its own `inspection.html` with all six camera frames. Review front
+objects, unsupported claims, repetitive questions, and ground-truth copying
+against the images before scaling up. A successful schema check alone does
+not establish annotation quality.

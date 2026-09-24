@@ -1,0 +1,47 @@
+{
+  "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+  "width": 800,
+  "count": 4,
+  "samples": [
+    {
+      "sample_id": "run08_000075",
+      "run": "run08",
+      "map": "Town04",
+      "split": "eval",
+      "path": "eval/run08_000075/sample.json",
+      "action": "FORWARD",
+      "future_motion": "moving at a roughly steady 8.1 m/s; 24.2 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "b0e2a2d8de0c3c0e21d08023aa9080d12d52285dfd11c08d72517f4cf21485a2"
+    },
+    {
+      "sample_id": "run08_000315",
+      "run": "run08",
+      "map": "Town04",
+      "split": "eval",
+      "path": "eval/run08_000315/sample.json",
+      "action": "FORWARD",
+      "future_motion": "moving at a roughly steady 8.1 m/s; 24.2 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "5dbfdd3631bb5ff00f6eea985903458388068b70ecfee8c8605007a9842c8a40"
+    },
+    {
+      "sample_id": "run08_000555",
+      "run": "run08",
+      "map": "Town04",
+      "split": "eval",
+      "path": "eval/run08_000555/sample.json",
+      "action": "FORWARD",
+      "future_motion": "accelerating from about 12.9 m/s to about 15.9 m/s; 45.9 m forward displacement over 3 s in a straight line, ending 0.3 m to the right of its current heading",
+      "input_id": "affec2dc80a2bab8edc301a0315ee5eb994332544266ac5e0bc7a7c1225dfe7e"
+    },
+    {
+      "sample_id": "run08_000795",
+      "run": "run08",
+      "map": "Town04",
+      "split": "eval",
+      "path": "eval/run08_000795/sample.json",
+      "action": "FORWARD",
+      "future_motion": "moving at a roughly steady 15.9 m/s; 47.8 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "2ae37e5e6b46373c650c7ace073516ed5d5c550b63ef11c379b0a765b2c40e95"
+    }
+  ]
+}

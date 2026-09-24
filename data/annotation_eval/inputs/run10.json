@@ -1,0 +1,47 @@
+{
+  "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+  "width": 800,
+  "count": 4,
+  "samples": [
+    {
+      "sample_id": "run10_000075",
+      "run": "run10",
+      "map": "Town10HD_Opt",
+      "split": "eval",
+      "path": "eval/run10_000075/sample.json",
+      "action": "FORWARD",
+      "future_motion": "slowing from about 8.1 m/s to about 7.2 m/s; 23.6 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "49c56c6cb6fc950acb214d518d648ae85d07ba20ac2c184497aee3b5d26658fb"
+    },
+    {
+      "sample_id": "run10_000285",
+      "run": "run10",
+      "map": "Town10HD_Opt",
+      "split": "eval",
+      "path": "eval/run10_000285/sample.json",
+      "action": "FORWARD",
+      "future_motion": "accelerating from about 5.5 m/s to about 8.1 m/s; 17.7 m forward displacement over 3 s curving left, ending 11.4 m to the left of its current heading",
+      "input_id": "a9f85c5a428d8a83d16fdab9439bae7f52b7d29a99a62449a9a465a95a1d82bc"
+    },
+    {
+      "sample_id": "run10_000525",
+      "run": "run10",
+      "map": "Town10HD_Opt",
+      "split": "eval",
+      "path": "eval/run10_000525/sample.json",
+      "action": "FORWARD",
+      "future_motion": "moving at a roughly steady 8.0 m/s; 23.9 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "36f0cd7f77f25bf8210a480df825b074599a60ceeeec4763d38d0f3ca6dbe3b4"
+    },
+    {
+      "sample_id": "run10_000795",
+      "run": "run10",
+      "map": "Town10HD_Opt",
+      "split": "eval",
+      "path": "eval/run10_000795/sample.json",
+      "action": "STOP",
+      "future_motion": "stationary throughout (0.0 m forward displacement over 3 s)",
+      "input_id": "b0cbe21f6b246abe9718516f02bea4eebd1ae27f41f1bc832f7b710679a46630"
+    }
+  ]
+}

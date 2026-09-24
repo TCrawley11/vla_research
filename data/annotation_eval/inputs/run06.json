@@ -1,0 +1,47 @@
+{
+  "revision": "3e3d9aea3083e530505a47e596d493afe005719a",
+  "width": 800,
+  "count": 4,
+  "samples": [
+    {
+      "sample_id": "run06_000345",
+      "run": "run06",
+      "map": "Town01",
+      "split": "eval",
+      "path": "eval/run06_000345/sample.json",
+      "action": "FORWARD",
+      "future_motion": "slowing from about 8.1 m/s to about 4.8 m/s; 22.1 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "9fd23c8f9741d07d3ec7e5a51ce8b8ea975f2a8467796b8b4cd6ebac6aa58c86"
+    },
+    {
+      "sample_id": "run06_000465",
+      "run": "run06",
+      "map": "Town01",
+      "split": "eval",
+      "path": "eval/run06_000465/sample.json",
+      "action": "FORWARD",
+      "future_motion": "accelerating from about 3.3 m/s to about 5.2 m/s; 13.3 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "33e32f2e3553d3380a8d3d6cb8856c3c45a9fb8c69308bdb9b7cd311f280a8fc"
+    },
+    {
+      "sample_id": "run06_000615",
+      "run": "run06",
+      "map": "Town01",
+      "split": "eval",
+      "path": "eval/run06_000615/sample.json",
+      "action": "RIGHT_TURN",
+      "future_motion": "moving at a roughly steady 7.9 m/s; 8.4 m forward displacement over 3 s curving right, ending 20.0 m to the right of its current heading",
+      "input_id": "bec3dde0dc5ccaa991509f82037cebfd79bf50b89d2e0cf2f6f4e14161350ab2"
+    },
+    {
+      "sample_id": "run06_000795",
+      "run": "run06",
+      "map": "Town01",
+      "split": "eval",
+      "path": "eval/run06_000795/sample.json",
+      "action": "FORWARD",
+      "future_motion": "moving at a roughly steady 8.1 m/s; 24.2 m forward displacement over 3 s in a straight line, with negligible lateral displacement",
+      "input_id": "344e14b64b0bc0c61b59f2e831ad9d15ddda9b1ec524ecc0364aea71a2522845"
+    }
+  ]
+}

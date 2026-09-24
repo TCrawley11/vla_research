@@ -27,7 +27,7 @@ import carla
 import h5py
 import numpy as np
 
-from .config.schema import CameraSpec, CollectConfig, TrafficConfig
+from .config_utils.schema import CameraSpec, CollectConfig, TrafficConfig
 
 log = logging.getLogger(__name__)
 

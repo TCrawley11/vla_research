@@ -1,0 +1,49 @@
+# Local smoke eval: same model and prompts as local.yaml, but spread sample
+# indices on run43 (OpenRouter benchmark keys), not spawn-adjacent 1-3.
+# Serve first: scripts/serve_annotator_llama.sh
+# Then: python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
+
+repo_id: VLA-uwo-2026/six_cam_1600x900
+out_dir: data/annotations
+
+samples:
+  run: run43
+  indices: [4, 8, 12]
+  limit: null
+
+inference:
+  base_url: http://127.0.0.1:8001/v1
+  model: auto
+  model_revision: 5cb35eb3dcbf52dbce5f87dbc64df6aaffadcace/Qwen3.6-27B-Q3_K_M.gguf
+  concurrency: 1
+  timeout_sec: 1800
+  chat_template_kwargs:
+    enable_thinking: false
+  context_length: 32768            # must match the server; includes images + output
+
+questions:
+  counts:
+    perception: 6
+    prediction: 4
+    planning: 4
+    behaviour: 4
+  enable_thinking: true
+  max_tokens: 8000
+
+limits:
+  answer_max_words: 30
+  caption_short_max_words: 25
+  caption_detailed_min_words: 30
+  caption_detailed_max_words: 70
+
+generation:
+  temperature: 0.3
+  max_tokens: 4000
+  max_attempts: 3
+  image_width: 800
+
+examples:
+  path: configs/annotation/examples.yaml
+  k: 1
+  questions: true
+  answers: true

@@ -1,7 +1,10 @@
 # Local GGUF annotation: sequential walk of the team HF dataset, 6-camera
-# key frames, Qwen3.5-9B Q6_K for both question writing and answers.
-# Serve first: scripts/serve_annotator.sh
+# key frames, quantized Qwen 27B for both question writing and answers.
+# Question writing uses thinking; answers do not.
+# Serve first: scripts/serve_annotator_llama.sh
 # Then: python -m carla_data_pipeline annotate
+# Smoke (spread indices, not spawn-adjacent 1-3):
+#   python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
 
 repo_id: VLA-uwo-2026/six_cam_1600x900
 out_dir: data/annotations
@@ -15,11 +18,13 @@ samples:
 
 inference:
   base_url: http://127.0.0.1:8001/v1
-  model: qwen3.5-9b-q6_k          # must match --served-model-name
-  concurrency: 2                  # 5060 Ti 16GB; raise after measuring KV
-  timeout_sec: 300
+  model: auto                     # resolve and record the single served model id
+  model_revision: 5cb35eb3dcbf52dbce5f87dbc64df6aaffadcace/Qwen3.6-27B-Q3_K_M.gguf
+  concurrency: 1                  # start conservatively for quantized 27B
+  timeout_sec: 1800                # CPU offload can make a 27B request slow
   chat_template_kwargs:
     enable_thinking: false
+  context_length: 32768            # must match the server; includes images + output
 
 questions:
   counts:
@@ -27,6 +32,8 @@ questions:
     prediction: 4
     planning: 4
     behaviour: 4
+  enable_thinking: true          # question writer only; annotator stays off
+  max_tokens: 8000               # thinking counts against this; 4000 truncates
 
 limits:
   answer_max_words: 30
@@ -39,3 +46,9 @@ generation:
   max_tokens: 4000
   max_attempts: 3
   image_width: 800
+
+examples:
+  path: configs/annotation/examples.yaml
+  k: 1
+  questions: true
+  answers: true

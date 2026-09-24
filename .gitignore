@@ -22,6 +22,12 @@ data/runs/*
 data/bench/
 data/videos/
 data/annotations/
+data/annotation_test/
+# Evaluation runs are generated; keep the small pinned input fixture reviewable.
+data/annotation_eval/**
+!data/annotation_eval/inputs/
+!data/annotation_eval/inputs/**
+data/*.log
 
 # local GGUF weights (scripts/serve_annotator.sh downloads these)
 models/*.gguf
