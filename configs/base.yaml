@@ -14,6 +14,7 @@ capture:
   horizon_sec: 3.0
   waypoint_period_sec: 0.5
   motion_labels:
+  # for stop smoothing
     median_window_frames: 7
     stationary_enter_mps: 0.15
     stationary_exit_mps: 0.35
