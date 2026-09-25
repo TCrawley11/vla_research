@@ -118,7 +118,31 @@ class StopCondition(StrictModel):
         return int(round(self.duration_sec * raw_fps))
 
 
+class MotionLabelConfig(StrictModel):
+    """Causal speed filter and motion-state confirmation settings."""
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    median_window_frames: int = Field(7, gt=0, description="Trailing speed median window, raw frames; must be odd.")
+    stationary_enter_mps: float = Field(0.15, ge=0)
+    stationary_exit_mps: float = Field(0.35, gt=0)
+    creeping_enter_mps: float = Field(1.0, gt=0)
+    moving_enter_mps: float = Field(1.5, gt=0)
+    stationary_enter_sec: float = Field(0.5, gt=0)
+    stationary_exit_sec: float = Field(0.2, gt=0)
+    creeping_enter_sec: float = Field(0.3, gt=0)
+    moving_enter_sec: float = Field(0.3, gt=0)
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        if self.median_window_frames % 2 != 1:
+            raise ValueError("median_window_frames must be odd")
+        if not (self.stationary_enter_mps < self.stationary_exit_mps
+                < self.creeping_enter_mps < self.moving_enter_mps):
+            raise ValueError("motion speed thresholds must be strictly increasing")
+        return self
+
+
 class CaptureConfig(StrictModel):
+    motion_labels: MotionLabelConfig = Field(default_factory=MotionLabelConfig, description="Offline motion labeling settings, recorded with the run.")
     raw_fps: int = Field(30, gt=0, description="Capture tick rate; fixed_delta_seconds = 1/raw_fps.")
     stop: StopCondition = Field(..., description="When the capture ends.")
     sample_fps: int = Field(5, gt=0, description="Clip subsampling rate; must divide raw_fps.")

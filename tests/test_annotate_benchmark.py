@@ -8,7 +8,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from scripts import annotate_benchmark as ab
+from carla_data_pipeline import benchmark as ab
+from carla_data_pipeline import annotate as annotation
 
 REPO = Path(__file__).resolve().parents[1]
 CONFIG = REPO / "configs" / "annotation" / "benchmark.yaml"
@@ -82,10 +83,10 @@ def test_questions_block_is_required():
 
 
 def test_qa_counts_helpers():
-    c = ab.QaCounts(perception=6, prediction=4, planning=4, behaviour=0)
+    c = annotation.QaCounts(perception=6, prediction=4, planning=4, behaviour=0)
     assert c.total == 14
     assert c.text() == "6 perception, 4 prediction, 4 planning"
-    assert list(c.as_dict()) == ab.QA_TYPES
+    assert list(c.as_dict()) == annotation.QA_TYPES
 
 
 # --------------------------------------------------------------------------
@@ -99,7 +100,7 @@ def _gt(**over):
                 past_window_sec=1.5, horizon_sec=3.0, waypoint_period_sec=0.5,
                 future_waypoints_ego_frame=[[0.05, 0.0]] * 6)
     base.update(over)
-    return ab.GroundTruth(**base)
+    return annotation.GroundTruth(**base)
 
 
 @pytest.mark.parametrize("over", [
@@ -127,7 +128,7 @@ def test_ground_truth_prompt_block():
     assert "dominant action over the past 1.5 s: FORWARD" in block
     assert "full stop" in block
     assert "map" not in block.lower()
-    for cam in ab.CAMERAS:                       # all six cameras are attached
+    for cam in annotation.CAMERAS:                       # all six cameras are attached
         assert cam in block
 
 
@@ -151,21 +152,21 @@ def test_ground_truth_record_is_json_ready():
 
 def test_past_indices_take_past_half_and_key():
     clip = np.array([94, 96, 98, 100, 102, 104, 106])   # key = 100, 3 each side
-    assert ab.past_indices(clip).tolist() == [94, 96, 98, 100]
+    assert annotation.past_indices(clip).tolist() == [94, 96, 98, 100]
 
 
 # --------------------------------------------------------------------------
 # prompts
 # --------------------------------------------------------------------------
 
-LIMITS = ab.LimitsConfig(answer_max_words=30, caption_short_max_words=25,
+LIMITS = annotation.LimitsConfig(answer_max_words=30, caption_short_max_words=25,
                          caption_detailed_min_words=30, caption_detailed_max_words=70)
 
 
 def test_prompts_format_for_both_stages():
-    counts = ab.QaCounts()
-    qs = ab.QUESTION_WRITER_SYSTEM.format(n_total=counts.total, counts_text=counts.text())
-    answers = ab.ANNOTATOR_SYSTEM.format(n_total=counts.total, **LIMITS.model_dump())
+    counts = annotation.QaCounts()
+    qs = annotation.QUESTION_WRITER_SYSTEM.format(n_total=counts.total, counts_text=counts.text())
+    answers = annotation.ANNOTATOR_SYSTEM.format(n_total=counts.total, **LIMITS.model_dump())
     assert "Write exactly 18 questions, 6 perception, 4 prediction, 4 planning, 4 behaviour" in qs
     assert "Write the question set for one sample" in qs
     assert "Write questions only, never answers" in qs
@@ -182,8 +183,8 @@ def test_prompts_format_for_both_stages():
 
 
 def test_prompt_ids():
-    assert ab.QUESTION_WRITER_PROMPT_ID != ab.ANNOTATOR_PROMPT_ID
-    for pid in (ab.QUESTION_WRITER_PROMPT_ID, ab.ANNOTATOR_PROMPT_ID):
+    assert annotation.QUESTION_WRITER_PROMPT_ID != annotation.ANNOTATOR_PROMPT_ID
+    for pid in (annotation.QUESTION_WRITER_PROMPT_ID, annotation.ANNOTATOR_PROMPT_ID):
         assert len(pid) == 12 and int(pid, 16) >= 0
 
 
@@ -192,8 +193,8 @@ def test_prompt_ids():
 # --------------------------------------------------------------------------
 
 def test_schema_answers_enumerates_ids():
-    ids = ab.question_ids(12)
-    schema = ab.schema_answers(ids)["schema"]
+    ids = annotation.question_ids(12)
+    schema = annotation.schema_answers(ids)["schema"]
     answers = schema["properties"]["answers"]
     assert answers["minItems"] == answers["maxItems"] == 12
     assert answers["items"]["properties"]["id"]["enum"] == ids
@@ -214,9 +215,9 @@ def test_no_own_mode_surface():
     with pytest.raises(ValidationError, match="extra"):
         _cfg(**{"questions.mode": "own"})
     # only two output schemas exist: questions (writer) and answers (annotator)
-    schema_fns = sorted(n for n in dir(ab) if n.startswith("schema_"))
+    schema_fns = sorted(n for n in dir(annotation) if n.startswith("schema_"))
     assert schema_fns == ["schema_answers", "schema_questions"], schema_fns
-    validators = sorted(n for n in dir(ab) if n.startswith("validate_"))
+    validators = sorted(n for n in dir(annotation) if n.startswith("validate_"))
     assert validators == ["validate_answers", "validate_questions"], validators
 
 
@@ -237,65 +238,65 @@ def _answers(ids):
 
 
 def test_validate_answers():
-    ids = ab.question_ids(4)
-    assert ab.validate_answers(_answers(ids), ids, LIMITS) == []
+    ids = annotation.question_ids(4)
+    assert annotation.validate_answers(_answers(ids), ids, LIMITS) == []
     bad = _answers(ids[:-1] + ["q09"])
-    errors = ab.validate_answers(bad, ids, LIMITS)
+    errors = annotation.validate_answers(bad, ids, LIMITS)
     assert any("unanswered" in e and "q04" in e for e in errors)
     assert any("unknown" in e and "q09" in e for e in errors)
     dup = _answers(ids[:-1] + ["q01"])
-    assert any("more than once" in e for e in ab.validate_answers(dup, ids, LIMITS))
+    assert any("more than once" in e for e in annotation.validate_answers(dup, ids, LIMITS))
     empty = _answers(ids)
     empty["answers"][0]["answer"] = "  "
-    assert any("answers[0].'answer'" in e for e in ab.validate_answers(empty, ids, LIMITS))
-    assert ab.validate_answers([], ids, LIMITS) == ["top level is not a JSON object"]
+    assert any("answers[0].'answer'" in e for e in annotation.validate_answers(empty, ids, LIMITS))
+    assert annotation.validate_answers([], ids, LIMITS) == ["top level is not a JSON object"]
 
 
 def test_word_limits():
-    ids = ab.question_ids(2)
+    ids = annotation.question_ids(2)
     ok = _answers(ids)
     ok["answers"][1]["answer"] = " ".join(["w"] * 31)
-    errors = ab.validate_answers(ok, ids, LIMITS)
+    errors = annotation.validate_answers(ok, ids, LIMITS)
     assert errors == ["answers[q02].answer has 31 words (max 30)"]
     long_cap = _answers(ids)
     long_cap["caption_short"] = " ".join(["w"] * 26)
     long_cap["caption_detailed"] = " ".join(["w"] * 10)
-    errors = ab.validate_answers(long_cap, ids, LIMITS)
+    errors = annotation.validate_answers(long_cap, ids, LIMITS)
     assert "caption_short has 26 words (max 25)" in errors
     assert "caption_detailed has 10 words (min 30)" in errors
     with pytest.raises(Exception, match="exceeds"):
-        ab.LimitsConfig(caption_detailed_min_words=80, caption_detailed_max_words=70)
+        annotation.LimitsConfig(caption_detailed_min_words=80, caption_detailed_max_words=70)
 
 
 def test_trajectory_summary_reports_speed_profile():
     braking = np.array([[3.08, -0.17], [5.94, -0.43], [7.43, -0.64],
                         [7.43, -0.64], [7.43, -0.64], [7.43, -0.64]])
-    s = ab.summarize_trajectory(braking, "STRAIGHT", 3.0, 0.5)
+    s = annotation.summarize_trajectory(braking, "STRAIGHT", 3.0, 0.5)
     assert "full stop after about 7.4 m" in s and "within about 1.5 s" in s
     steady = np.array([[4, -0.2], [8, -0.7], [12, -1.4], [15.9, -2.5], [19.7, -3.8], [23.4, -5.3]])
-    assert "roughly steady 8." in ab.summarize_trajectory(steady, "RIGHT_CURVE", 3.0, 0.5)
+    assert "roughly steady 8." in annotation.summarize_trajectory(steady, "RIGHT_CURVE", 3.0, 0.5)
     pull_away = np.array([[0, 0], [0, 0], [0.5, 0], [2, 0], [4, 0], [7, 0]])
-    assert "pulling away from standstill after about 1 s" in ab.summarize_trajectory(pull_away, "STRAIGHT", 3.0, 0.5)
+    assert "pulling away from standstill after about 1 s" in annotation.summarize_trajectory(pull_away, "STRAIGHT", 3.0, 0.5)
     slowing = np.array([[4, 0], [7, 0], [9, 0], [10.5, 0], [11.5, 0], [12, 0]])
-    assert "slowing from about 8.0 m/s to about 1.0 m/s" in ab.summarize_trajectory(slowing, "STRAIGHT", 3.0, 0.5)
+    assert "slowing from about 8.0 m/s to about 1.0 m/s" in annotation.summarize_trajectory(slowing, "STRAIGHT", 3.0, 0.5)
     still = np.zeros((6, 2))
-    assert "stationary" in ab.summarize_trajectory(still, "STOPPING", 3.0, 0.5)
+    assert "stationary" in annotation.summarize_trajectory(still, "STOPPING", 3.0, 0.5)
 
 
 def test_validate_questions():
-    two_each = dict.fromkeys(ab.QA_TYPES, 2)
+    two_each = dict.fromkeys(annotation.QA_TYPES, 2)
     qs = {"questions": [{"type": t, "question": f"{t} {k}?"}
-                        for t in ab.QA_TYPES for k in range(2)]}
-    assert ab.validate_questions(qs, two_each) == []
+                        for t in annotation.QA_TYPES for k in range(2)]}
+    assert annotation.validate_questions(qs, two_each) == []
     uneven = {"perception": 3, "prediction": 2, "planning": 2, "behaviour": 1}
-    errors = ab.validate_questions(qs, uneven)
+    errors = annotation.validate_questions(qs, uneven)
     assert "2 'perception' items (need exactly 3)" in errors
     assert "2 'behaviour' items (need exactly 1)" in errors
     assert not any("prediction" in e or "planning" in e for e in errors)
     qs["questions"][1]["question"] = qs["questions"][0]["question"]
-    assert "duplicate questions" in ab.validate_questions(qs, two_each)
+    assert "duplicate questions" in annotation.validate_questions(qs, two_each)
     qs["questions"][0]["type"] = "vibes"
-    assert any("not in" in e for e in ab.validate_questions(qs, two_each))
+    assert any("not in" in e for e in annotation.validate_questions(qs, two_each))
 
 
 # --------------------------------------------------------------------------
@@ -306,7 +307,7 @@ def test_legacy_question_cache_is_not_trusted(tmp_path):
     bench = _bench()
     path = tmp_path / "s.json"
     path.write_text(json.dumps({"model": bench.cfg.questions.model,
-                               "question_prompt_id": ab.QUESTION_WRITER_PROMPT_ID,
+                               "question_prompt_id": annotation.QUESTION_WRITER_PROMPT_ID,
                                "counts": bench.cfg.questions.counts.as_dict()}))
     assert bench.load_question_set(path) is None
     path.write_text("{")
@@ -317,13 +318,13 @@ def test_question_set_id_depends_on_text_only():
     a = [{"id": "q01", "type": "perception", "question": "x?"}]
     b = [{"id": "q77", "type": "perception", "question": "x?"}]
     c = [{"id": "q01", "type": "perception", "question": "y?"}]
-    assert ab.question_set_id(a) == ab.question_set_id(b) != ab.question_set_id(c)
+    assert annotation.question_set_id(a) == annotation.question_set_id(b) != annotation.question_set_id(c)
 
 
 def test_incomplete_result_is_not_current(tmp_path):
     bench = _bench()
     path = tmp_path / "s.json"
-    path.write_text(json.dumps({"model": bench.cfg.models[0], "prompt_id": bench.prompt_id()}))
+    path.write_text(json.dumps({"model": bench.cfg.models[0], "prompt_id": bench.prompt("answers", "sample").id}))
     assert not bench.result_is_current(path, bench.cfg.models[0], {"id": "x"})
 
 
@@ -349,30 +350,30 @@ EXAMPLE = {
 def _pool_cfg(tmp_path, pool, k=1):
     p = tmp_path / "examples.yaml"
     p.write_text(yaml.safe_dump(pool))
-    return ab.ExamplesConfig(path=p, k=k)
+    return annotation.ExamplesConfig(path=p, k=k)
 
 
 def test_examples_pool_validates(tmp_path):
-    pool = ab.load_examples(_pool_cfg(tmp_path, [EXAMPLE]), LIMITS)
+    pool = annotation.load_examples(_pool_cfg(tmp_path, [EXAMPLE]), LIMITS)
     assert pool[0].scene == "toy scene"
     assert pool[0].questions()[0]["id"] == "q01"
     too_long = dict(EXAMPLE, caption_short=" ".join(["w"] * 26))
     with pytest.raises(SystemExit, match="limits"):
-        ab.load_examples(_pool_cfg(tmp_path, [too_long]), LIMITS)
+        annotation.load_examples(_pool_cfg(tmp_path, [too_long]), LIMITS)
     with pytest.raises(SystemExit, match="only 1"):
-        ab.load_examples(_pool_cfg(tmp_path, [EXAMPLE], k=3), LIMITS)
+        annotation.load_examples(_pool_cfg(tmp_path, [EXAMPLE], k=3), LIMITS)
     bad_type = dict(EXAMPLE, qa_pairs=[{"type": "vibes", "question": "q?",
                                         "answer": "a"}])
     with pytest.raises(ValidationError):
-        ab.load_examples(_pool_cfg(tmp_path, [bad_type]), LIMITS)
+        annotation.load_examples(_pool_cfg(tmp_path, [bad_type]), LIMITS)
 
 
 def test_example_rotation_deterministic_per_sample(tmp_path):
     raw = [dict(EXAMPLE, scene=f"scene {i}") for i in range(5)]
-    pool = ab.load_examples(_pool_cfg(tmp_path, raw, k=2), LIMITS)
+    pool = annotation.load_examples(_pool_cfg(tmp_path, raw, k=2), LIMITS)
 
     def pick(sid):
-        return [e.scene for e in ab.select_examples(pool, 2, sid)]
+        return [e.scene for e in annotation.select_examples(pool, 2, sid)]
 
     assert pick("run43_000165") == pick("run43_000165")
     assert len({tuple(pick(f"run43_{i:06d}")) for i in range(20)}) > 1
@@ -380,8 +381,8 @@ def test_example_rotation_deterministic_per_sample(tmp_path):
 
 def test_render_examples_matches_task_shape(tmp_path):
     raw = [dict(EXAMPLE, scene=f"scene {i}") for i in range(2)]
-    pool = ab.load_examples(_pool_cfg(tmp_path, raw, k=2), LIMITS)
-    text = ab.render_examples(pool)
+    pool = annotation.load_examples(_pool_cfg(tmp_path, raw, k=2), LIMITS)
+    text = annotation.render_examples(pool)
     assert "Example 1: scene 0" in text
     assert "q01 [perception] What is visible?" in text
     assert '"answers"' in text and '"caption_detailed"' in text
@@ -393,16 +394,16 @@ def test_examples_change_prompt_id_and_stale_results(tmp_path):
     pool_path = tmp_path / "examples.yaml"
     pool_path.write_text(yaml.safe_dump(raw))
     plain = _bench()
-    assert plain.prompt_id() == ab.ANNOTATOR_PROMPT_ID
-    assert plain._examples_suffix("run43_000165") == ""
+    assert plain.prompt("answers", "sample").id == annotation.ANNOTATOR_PROMPT_ID
+    assert plain.prompt("answers", "run43_000165").examples is None
     with_ex = _bench(_cfg(examples={"path": str(pool_path), "k": 2}))
-    assert with_ex.prompt_id() != plain.prompt_id()
-    assert "Examples of finished annotations" in with_ex._examples_suffix("run43_000165")
+    assert with_ex.prompt("answers", "sample").id != plain.prompt("answers", "sample").id
+    assert "Examples of finished annotations" in with_ex.prompt("answers", "run43_000165").system
     # a result produced without examples goes stale once examples are enabled
     qs = {"id": "abc123", "model": plain.cfg.questions.model}
     path = tmp_path / "s__m.json"
     path.write_text(json.dumps({
-        "model": plain.cfg.models[0], "prompt_id": plain.prompt_id(),
+        "model": plain.cfg.models[0], "prompt_id": plain.prompt("answers", "sample").id,
         "limits": plain.cfg.limits.model_dump(),
         "qa_counts": plain.cfg.questions.counts.as_dict(),
         "question_set": qs}))
@@ -411,8 +412,8 @@ def test_examples_change_prompt_id_and_stale_results(tmp_path):
 
 
 def test_shipped_examples_pool_loads():
-    cfg = ab.ExamplesConfig(path=REPO / "configs" / "annotation" / "examples.yaml", k=2)
-    pool = ab.load_examples(cfg, ab.LimitsConfig())
+    cfg = annotation.ExamplesConfig(path=REPO / "configs" / "annotation" / "examples.yaml", k=2)
+    pool = annotation.load_examples(cfg, annotation.LimitsConfig())
     assert len(pool) >= 3
     scenes = [e.scene for e in pool]
     assert len(set(scenes)) == len(scenes)

@@ -18,7 +18,7 @@ import numpy as np
 from huggingface_hub import HfFileSystem
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from carla_data_pipeline.annotation_common import (
+from carla_data_pipeline.annotate import (
     CAMERAS, GroundTruth, SamplePayload, atomic_json, input_id, load_sample,
     read_json, speed_profile,
 )

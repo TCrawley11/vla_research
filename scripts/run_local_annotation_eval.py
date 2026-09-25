@@ -13,8 +13,9 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from carla_data_pipeline.annotate import Annotator, VllmClient, load_config
-from carla_data_pipeline.annotation_common import atomic_json, read_json, digest
+from carla_data_pipeline.annotate import (
+    Annotator, VllmClient, load_config, atomic_json, read_json, digest, input_id,
+)
 from scripts.prepare_annotation_eval import load_payload
 from scripts.build_inspection import main as build_inspection
 
@@ -109,7 +110,6 @@ def run_evaluation(cfg, manifest_path: Path, out_dir: Path, variants: list[str],
 
 
 def digest_input(payload):
-    from carla_data_pipeline.annotation_common import input_id
     return input_id(payload)
 
 

@@ -84,3 +84,32 @@ def test_too_short_run_yields_zero_samples(tmp_path):
     with h5py.File(path) as f:
         assert f["sample_index/key_index"].shape == (0,)
         assert f["trajectory/future_waypoints_ego_frame"].shape == (0, 6, 2)
+
+
+def test_motion_metadata_events_and_rebuild_override(tmp_path):
+    from carla_data_pipeline.config_utils.schema import MotionLabelConfig
+    path = make_run(tmp_path, n_frames=180)
+    with h5py.File(path, 'r+') as f:
+        data = f['telemetry/data'][:]
+        data[:, 4] = .6
+        data[65:95, 4] = 0
+        f['telemetry/data'][:] = data
+        raw = data.copy()
+    build_samples(path)
+    with h5py.File(path) as f:
+        assert f.attrs['sample_schema_version'] == 2
+        assert f['motion'].attrs['labeler_version'] == 2
+        assert f['motion/motion_state'].asstr()[0] == 'CREEPING'
+        assert f['motion/comes_to_stop'][0]
+        assert f['motion/starts_moving'][0]
+        assert f['motion/events_valid'][0]
+        assert not f['motion/stationary_throughout'][0]
+        np.testing.assert_array_equal(f['telemetry/data'][:], raw)
+    build_samples(path, MotionLabelConfig(stationary_enter_sec=2.))
+    with h5py.File(path) as f:
+        assert not f['motion/comes_to_stop'][0]
+        assert json.loads(f['motion'].attrs['config_json'])['stationary_enter_sec'] == 2.
+    assert json.loads(path.with_suffix('.json').read_text())['motion_label_config']['stationary_enter_sec'] == 2.
+    build_samples(path)  # recorded override is retained on subsequent rebuilds
+    with h5py.File(path) as f:
+        assert not f['motion/comes_to_stop'][0]

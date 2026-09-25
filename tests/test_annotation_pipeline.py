@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from carla_data_pipeline import annotate as local
-from carla_data_pipeline import annotation_common as common
-from scripts import annotate_benchmark as hosted
+from carla_data_pipeline import annotate as common
+from carla_data_pipeline import benchmark as hosted
 from scripts import prepare_annotation_eval as preparation
 from scripts import run_local_annotation_eval as evaluation
 
@@ -173,7 +173,7 @@ def test_both_stages_use_examples_and_recover_caches(tmp_path, kind):
         # Exercise the hosted runner against the same payload without HDF5 I/O.
         def run():
             from unittest.mock import patch
-            with patch.object(hosted, 'load_sample', return_value=p):
+            with patch.object(hosted.ann, 'load_sample', return_value=p):
                 worker.run(None, [1], [cfg.models[0]])
     (tmp_path / 'frames').mkdir()
     run()
@@ -223,7 +223,7 @@ def test_hosted_disabled_examples_are_absent_from_prompts_and_provenance(tmp_pat
     worker = hosted.Benchmark(cfg, client)
     p = payload()
     from unittest.mock import patch
-    with patch.object(hosted, 'load_sample', return_value=p):
+    with patch.object(hosted.ann, 'load_sample', return_value=p):
         worker.run(None, [1], [cfg.models[0]])
     assert all('Examples of finished annotations' not in call[0] for call in client.calls)
     questions = common.read_json(worker.question_path(p.gt.sample_id))
@@ -265,9 +265,9 @@ def test_client_does_not_disguise_context_error_as_schema_error(monkeypatch):
 
 
 def test_shared_contract_is_actually_shared():
-    assert local.load_sample is hosted.load_sample is common.load_sample
-    assert local.validate_answers is hosted.validate_answers is common.validate_answers
-    assert local.speed_profile is hosted.speed_profile is common.speed_profile
+    assert local.load_sample is hosted.ann.load_sample is common.load_sample
+    assert local.validate_answers is hosted.ann.validate_answers is common.validate_answers
+    assert local.speed_profile is hosted.ann.speed_profile is common.speed_profile
 
 
 def test_local_model_identity_survives_server_restart(monkeypatch):
@@ -390,3 +390,22 @@ def test_evaluation_rejects_source_run_leakage_before_inference(tmp_path, monkey
     monkeypatch.setattr(evaluation, 'VllmClient', unexpected_client)
     with pytest.raises(ValueError, match='overlap'):
         evaluation.run_evaluation(local.AnnotateConfig(), path, tmp_path / 'results', ['baseline'])
+
+
+@pytest.mark.parametrize('failed_stage', ['questions', 'answers'])
+def test_local_stage_failure_preserves_recovery(tmp_path, failed_stage):
+    cfg = local.load_config(ROOT / 'configs/annotation/local.yaml')
+    cfg.out_dir = tmp_path
+    client = RecordingClient()
+    worker = local.Annotator(cfg, client)
+    p = payload()
+    method = 'write_question_set' if failed_stage == 'questions' else 'annotate'
+    from unittest.mock import patch
+    with patch.object(worker, method, side_effect=RuntimeError('test failure')):
+        worker.process_payload(p, tmp_path / 'frames')
+    assert worker.failures == [(p.gt.sample_id, 'test failure')]
+    assert not worker.result_path(p.gt.sample_id).exists()
+    assert worker.question_path(p.gt.sample_id).exists() == (failed_stage == 'answers')
+    worker.process_payload(p, tmp_path / 'frames')
+    qs = worker.load_question_set(worker.question_path(p.gt.sample_id), p)
+    assert worker.result_is_current(worker.result_path(p.gt.sample_id), qs, p)

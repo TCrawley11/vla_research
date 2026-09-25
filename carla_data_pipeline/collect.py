@@ -84,6 +84,7 @@ class RunWriter:
             "coordinate_convention": COORDINATE_CONVENTION,
             "created_utc": _utcnow(),
             "schema_version": SCHEMA_VERSION,
+            "motion_label_config": cfg.capture.motion_labels.model_dump_json(),
         })
         str_dt = h5py.string_dtype()
         images = f.create_group("images")
