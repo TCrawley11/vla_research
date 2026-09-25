@@ -32,20 +32,18 @@ def test_left_turn_gives_positive_ego_y():
 
 
 def test_trajectory_type_thresholds():
-    assert trajectory_type(0.0, math.pi / 2, 10.0) == "LEFT_CURVE"
-    assert trajectory_type(0.0, -math.pi / 2, 10.0) == "RIGHT_CURVE"
-    assert trajectory_type(0.0, 0.1, 10.0) == "STRAIGHT"
+    assert trajectory_type(0.0, math.pi / 2) == "LEFT_CURVE"
+    assert trajectory_type(0.0, -math.pi / 2) == "RIGHT_CURVE"
+    assert trajectory_type(0.0, 0.1) == "STRAIGHT"
 
 
-def test_trajectory_type_stopping():
-    assert trajectory_type(0.0, 0.0, 0.3) == "STOPPING"
-    # a negligible forward displacement is STOPPING even if the yaw drifted
-    assert trajectory_type(0.0, math.pi / 2, 0.5) == "STOPPING"
+def test_stationary_geometry_is_straight():
+    assert trajectory_type(0.0, 0.0) == "STRAIGHT"
 
 
 def test_trajectory_type_wraps_across_pi():
     # net change is +0.2 rad, not -2*pi + 0.2
-    assert trajectory_type(math.pi - 0.1, -math.pi + 0.1, 10.0) == "STRAIGHT"
+    assert trajectory_type(math.pi - 0.1, -math.pi + 0.1) == "STRAIGHT"
 
 
 def test_key_selection_excludes_frames_without_full_horizon():

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from .config.load import ConfigError, load_collect_config
+from .config_utils.load import ConfigError, load_collect_config
 
 DEFAULT_DATA_DIR = Path("data/runs")
 
@@ -70,7 +70,7 @@ def main(argv=None) -> int:
                        help="usage (default) or the generated config reference")
 
     p_ann = sub.add_parser(
-        "annotate", help="Stage 4: annotate samples with a local vLLM endpoint")
+        "annotate", help="Stage 4: annotate with a local OpenAI-compatible VLM")
     p_ann.add_argument("--config", type=Path, default=Path("configs/annotation/local.yaml"),
                        help="annotation config (default: configs/annotation/local.yaml)")
     p_ann.add_argument("--h5", type=Path, help="local run .h5; skips the HF download")

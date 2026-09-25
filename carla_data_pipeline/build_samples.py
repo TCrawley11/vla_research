@@ -1,16 +1,11 @@
-"""Stage 2: build the S-axis sample groups into a run .h5 (offline, no CARLA).
+"""Stage 2: build the sample groups into a run .h5 (offline, no CARLA).
 
 Opens `data/runs/<run_id>.h5` r+, reads the sampling parameters from the root
 attrs written by Stage 1, and appends `/sample_index`, `/trajectory` and
 `/action` per `data/README.md`. Re-running replaces the sample groups, so the
 step is idempotent. The run's `.json` sidecar is updated with the sample count.
 
-Absorbs the old root-level dataset_builder.py: `action_label_from_velocity`
-and the sampling/slicing responsibilities live here now, operating on arrays
-in the h5 instead of dicts destined for JSON.
-
 Coordinate convention: ROS REP-103 (x forward, y left, yaw rad, +w = left),
-already applied by Stage 1 at log time.
 
 Index spaces: N = raw-fps frames, S = built samples. A key frame qualifies
 only if the *full future horizon* fits inside the log - the horizon extends
@@ -26,9 +21,12 @@ from pathlib import Path
 import h5py
 import numpy as np
 
+from .config_utils.schema import MotionLabelConfig
+from .motion import LABELER_VERSION, future_motion_events, motion_states
+
 log = logging.getLogger(__name__)
 
-# Action-label thresholds, tuned for CARLA's road-vehicle speed regime (m/s,
+# Legacy action thresholds for CARLA's road-vehicle speed regime (m/s,
 # rad/s) rather than the document's lab-robot values. Reasonable starting points
 # for urban driving; adjust to taste (named so they're easy to tune).
 STOP_V = 0.5    # m/s (~1.8 km/h); below this magnitude -> STOP
@@ -38,23 +36,22 @@ TURN_W = 0.15   # rad/s (~8.6 deg/s); above this magnitude -> turning
 # net yaw change over the future horizon separating straight from a curve
 CURVE_YAW = 0.30  # rad (~17 deg)
 
-# final forward displacement over the horizon below which the trajectory is
-# STOPPING (car-scale analogue of the instruction document's 0.05 m lab rule)
-STOP_TRAJ_DIST = 1.0  # m
-
 # fixed id mapping per data/README.md: 0..5 in this order
 ACTION_LABELS = ["STOP", "LEFT_TURN", "RIGHT_TURN", "SLOW_FORWARD", "FORWARD", "UNKNOWN"]
 
 
-def action_label_from_velocity(v, w, stop_v=STOP_V, slow_v=SLOW_V, turn_w=TURN_W):
+def action_label_from_velocity(v, w, stop_v=STOP_V, slow_v=SLOW_V, turn_w=TURN_W,
+                               motion_state=None):
     """Discrete action class from linear speed v (m/s) and yaw rate w (rad/s, +left).
 
     Classes: STOP, LEFT_TURN, RIGHT_TURN, SLOW_FORWARD, FORWARD, UNKNOWN.
     LANE_KEEP and LANE_RECOVERY_* are intentionally never produced.
     """
-    if v is None or w is None or math.isnan(v) or math.isnan(w):
+    if v is None or w is None or not math.isfinite(v) or not math.isfinite(w):
         return "UNKNOWN"
-    if abs(v) < stop_v:
+    if motion_state == "UNKNOWN":
+        return "UNKNOWN"
+    if motion_state == "STATIONARY" or (motion_state is None and abs(v) < stop_v):
         return "STOP"
     if abs(w) >= turn_w:
         return "LEFT_TURN" if w > 0 else "RIGHT_TURN"
@@ -108,15 +105,8 @@ def waypoints_to_ego_frame(points_xy, key_xy, key_yaw):
                      -d[:, 0] * s + d[:, 1] * c], axis=1)
 
 
-def trajectory_type(yaw_key, yaw_end, forward_dist,
-                    curve_yaw=CURVE_YAW, stop_dist=STOP_TRAJ_DIST):
-    """STOPPING / LEFT_CURVE / RIGHT_CURVE / STRAIGHT for one sample.
-
-    STOPPING when the final ego-frame forward displacement over the horizon is
-    negligible; otherwise classified by net yaw change over the horizon.
-    """
-    if abs(forward_dist) < stop_dist:
-        return "STOPPING"
+def trajectory_type(yaw_key, yaw_end, curve_yaw=CURVE_YAW):
+    """Geometric direction only; stationary and stop events live in /motion."""
     net = (yaw_end - yaw_key + math.pi) % (2 * math.pi) - math.pi
     if net > curve_yaw:
         return "LEFT_CURVE"
@@ -125,7 +115,7 @@ def trajectory_type(yaw_key, yaw_end, forward_dist,
     return "STRAIGHT"
 
 
-def build_samples(h5_path):
+def build_samples(h5_path, motion_config: MotionLabelConfig | None = None):
     """Build and write the S-axis groups for one run file. Returns the sample count."""
     h5_path = Path(h5_path)
     str_dt = h5py.string_dtype()
@@ -138,6 +128,9 @@ def build_samples(h5_path):
         horizon_sec = float(f.attrs["horizon_sec"])
         # runs captured before the attr existed default to the document's 0.5 s
         wp_period = float(f.attrs.get("waypoint_period_sec", 0.5))
+
+        motion_config = motion_config or MotionLabelConfig.model_validate_json(
+            f.attrs.get("motion_label_config", "{}"))
 
         frame_id = f["telemetry/frame_id"][:]
         data = f["telemetry/data"][:]
@@ -158,7 +151,11 @@ def build_samples(h5_path):
         futures = np.stack([future_indices(k, raw_fps, horizon_sec, wp_period) for k in keys]) \
             if s else np.zeros((0, t_horizon), dtype=np.int64)
 
-        for name in ("sample_index", "trajectory", "action"):
+        smooth_speed, states = motion_states(col["v"], col["sim_time"], motion_config)
+        events = np.array([future_motion_events(states[k:futures[i, -1] + 1])
+                           for i, k in enumerate(keys)], dtype=bool).reshape(s, 4)
+
+        for name in ("sample_index", "trajectory", "action", "motion", "motion_telemetry"):
             if name in f:
                 del f[name]
 
@@ -188,8 +185,7 @@ def build_samples(h5_path):
             waypoints_to_ego_frame(map_frame[i], xy[k], col["yaw"][k])
             for i, k in enumerate(keys)
         ]) if s else np.zeros((0, t_horizon, 2))
-        types = [trajectory_type(col["yaw"][k], col["yaw"][futures[i, -1]],
-                                 ego_frame[i][-1, 0])
+        types = [trajectory_type(col["yaw"][k], col["yaw"][futures[i, -1]])
                  for i, k in enumerate(keys)]
 
         tr = f.create_group("trajectory")
@@ -197,18 +193,33 @@ def build_samples(h5_path):
         tr.create_dataset("future_waypoints_ego_frame", data=ego_frame)
         tr.create_dataset("trajectory_type", data=types, dtype=str_dt)
 
-        labels = [action_label_from_velocity(col["v"][k], col["w"][k]) for k in keys]
+        motion = f.create_group("motion")
+        motion.attrs["labeler_version"] = LABELER_VERSION
+        motion.attrs["config_json"] = motion_config.model_dump_json()
+        motion.create_dataset("motion_state", data=states[keys].astype(object), dtype=str_dt)
+        motion.create_dataset("smoothed_speed_mps", data=smooth_speed[keys])
+        for i, name in enumerate(("stationary_throughout", "comes_to_stop",
+                                  "starts_moving", "events_valid")):
+            motion.create_dataset(name, data=events[:, i])
+        raw_motion = f.create_group("motion_telemetry")
+        raw_motion.create_dataset("smoothed_speed_mps", data=smooth_speed)
+        raw_motion.create_dataset("motion_state", data=states.astype(object), dtype=str_dt)
+        f.attrs["sample_schema_version"] = 2
+        f.attrs["motion_label_config"] = motion_config.model_dump_json()
+
+        labels = [action_label_from_velocity(smooth_speed[k], col["w"][k],
+                                             motion_state=states[k]) for k in keys]
         ac = f.create_group("action")
         ac.create_dataset("action_label", data=labels, dtype=str_dt)
         ac.create_dataset("action_id",
                           data=np.array([ACTION_LABELS.index(l) for l in labels],
                                         dtype=np.int32))
 
-    _update_sidecar(h5_path.with_suffix(".json"), s)
+    _update_sidecar(h5_path.with_suffix(".json"), s, motion_config)
     return s
 
 
-def _update_sidecar(sidecar_path, num_samples):
+def _update_sidecar(sidecar_path, num_samples, motion_config):
     if not sidecar_path.is_file():
         log.warning("no sidecar at %s; skipping status update", sidecar_path)
         return
@@ -216,6 +227,9 @@ def _update_sidecar(sidecar_path, num_samples):
         sidecar = json.load(fh)
     sidecar["status"] = "samples_built"
     sidecar["num_samples"] = num_samples
+    sidecar["sample_schema_version"] = 2
+    sidecar["motion_labeler_version"] = LABELER_VERSION
+    sidecar["motion_label_config"] = motion_config.model_dump()
     sidecar["samples_built_utc"] = datetime.datetime.now(datetime.UTC).isoformat()
     with open(sidecar_path, "w") as fh:
         json.dump(sidecar, fh, indent=2)

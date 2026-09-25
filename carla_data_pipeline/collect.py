@@ -27,7 +27,7 @@ import carla
 import h5py
 import numpy as np
 
-from .config.schema import CameraSpec, CollectConfig, TrafficConfig
+from .config_utils.schema import CameraSpec, CollectConfig, TrafficConfig
 
 log = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ class RunWriter:
             "coordinate_convention": COORDINATE_CONVENTION,
             "created_utc": _utcnow(),
             "schema_version": SCHEMA_VERSION,
+            "motion_label_config": cfg.capture.motion_labels.model_dump_json(),
         })
         str_dt = h5py.string_dtype()
         images = f.create_group("images")

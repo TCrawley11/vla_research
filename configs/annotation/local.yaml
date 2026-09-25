@@ -1,7 +1,10 @@
 # Local GGUF annotation: sequential walk of the team HF dataset, 6-camera
 # key frames, Qwen3.5-9B Q6_K for both question writing and answers.
+# Question writing uses thinking; answers do not.
 # Serve first: scripts/serve_annotator.sh
 # Then: python -m carla_data_pipeline annotate
+# Smoke (spread indices, not spawn-adjacent 1-3):
+#   python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
 
 repo_id: VLA-uwo-2026/six_cam_1600x900
 out_dir: data/annotations
@@ -20,13 +23,16 @@ inference:
   timeout_sec: 300
   chat_template_kwargs:
     enable_thinking: false
+  context_length: 8192             # must match serve_annotator.sh --max-model-len
 
 questions:
   counts:
     perception: 6
-    prediction: 4
+    prediction: 3
     planning: 4
-    behaviour: 4
+    behaviour: 1
+  enable_thinking: true          # question writer only; annotator stays off
+  max_tokens: 8000               # thinking counts against this; 4000 truncates
 
 limits:
   answer_max_words: 30
@@ -39,3 +45,9 @@ generation:
   max_tokens: 4000
   max_attempts: 3
   image_width: 800
+
+examples:
+  path: configs/annotation/examples.yaml
+  k: 1
+  questions: true
+  answers: true

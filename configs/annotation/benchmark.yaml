@@ -1,5 +1,5 @@
 # Annotation benchmark: which VLM annotators to compare, on which samples, and
-# how. Read by scripts/annotate_benchmark.py. Two model stages per sample:
+# how. Read by scripts/openrouter_bench.py. Two model stages per sample:
 #   1. questions.model writes the question set  -> out_dir/questions/<sample_id>.json
 #   2. every entry of models answers it         -> out_dir/<sample_id>__<model>.json
 # scripts/build_inspection.py renders the results side by side. Every field is
@@ -26,9 +26,9 @@ questions:
   model: qwen/qwen3.5-397b-a17b # required; the biggest Qwen on OpenRouter, so question quality is not the bottleneck
   counts:                       # questions per QA class, per sample (18 total)
     perception: 6
-    prediction: 4
+    prediction: 3
     planning: 4
-    behaviour: 4
+    behaviour: 1
   generation:                   # overrides of the generation block below, for the question author only
     max_tokens: 16000           # the 397B thinks 4-8k tokens before writing a set; 6000 truncated it repeatedly
 
@@ -48,7 +48,7 @@ limits:                         # stated in the prompt and enforced code-side (v
 
 generation:                     # identical for every candidate, so the comparison is fair
   temperature: 0.3
-  max_tokens: 8000              # qwen3.5/3.8 think by default and thinking counts against this; with 18 questions qwen3.8 overflowed 6000 once
+  max_tokens: 8000              # qwen3.5/3.8 think by default and thinking counts against this; allows room for provider reasoning and the 14 QA pairs
   max_attempts: 3               # schema-violation retries with feedback, per request
   reasoning: null               # OpenRouter `reasoning` object passed through, e.g. {enabled: false} or {effort: low}; null = provider default
   image_width: 800              # cameras are downscaled to this width before upload

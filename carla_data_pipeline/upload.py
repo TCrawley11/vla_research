@@ -18,7 +18,7 @@ import json
 import logging
 from pathlib import Path
 
-from .config.schema import UploadConfig
+from .config_utils.schema import UploadConfig
 
 log = logging.getLogger(__name__)
 

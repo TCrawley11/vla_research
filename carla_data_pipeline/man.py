@@ -10,7 +10,7 @@ import typing
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 
-from .config.schema import CollectConfig
+from .config_utils.schema import CollectConfig
 
 USAGE = """\
 carla_data_pipeline - config-driven headless CARLA data collection
@@ -25,8 +25,9 @@ STAGES
                     dataset repo, verifies size, then (per config) deletes the
                     local .h5; runs automatically after build-samples when
                     upload.enabled + upload.auto
-  4. annotate       local vLLM client: sequential walk of the HF dataset,
-                    6-camera key frames, same model writes questions and answers
+  4. annotate       local VLM client: sequential walk of the HF dataset,
+                    6-camera key frames, same model writes questions (thinking
+                    on) and answers (thinking off)
 
 COMMANDS
   collect <scenario.yaml> [--run-id ID] [--dry-run | --verify-only]
@@ -38,10 +39,11 @@ COMMANDS
   export-video <run_id | path.h5> [--camera CAM]... [--out-dir DIR] [--crf N]
       viewing tool: rebuild one h264 mp4 per camera from the raw frames
       into data/videos/<run_id>/; needs ffmpeg, touches nothing in the run
-  annotate [--config YAML] [--h5 path.h5] [--run ID] [--indices 4,5] [--limit N]
-      [--force] [--regenerate-questions]
-      needs a running vLLM server (scripts/serve_annotator.sh); default walk is
-      every runs/*.h5, samples 1..n-1 in order
+  annotate [--config YAML] [--h5 path.h5] [--base-url URL] [--run ID]
+      [--indices 4,5] [--limit N] [--force] [--regenerate-questions]
+      needs a local server (scripts/serve_annotator.sh); default walk is
+      every runs/*.h5, samples 1..n-1 in order. Smoke (spread run43 indices):
+      python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
   man [usage | config]
 
 TYPICAL SESSION
@@ -54,7 +56,8 @@ CONFIG FILES
   configs/base.yaml              shared defaults (connection, capture params)
   configs/camera_spec/*.yaml     camera rigs, referenced via `camera_spec:`
   configs/scenarios/*.yaml       what you pass to collect; `extends: ../base.yaml`
-  configs/annotation/local.yaml  local vLLM annotate walk (sequential by default)
+  configs/annotation/local.yaml  local VLM annotate walk (sequential by default)
+  configs/annotation/smoke.yaml  local smoke on spread run43 indices (not 1-3)
 
   A scenario deep-merges over base (scenario wins). Run identity (runNN) is
   assigned at collect time, never written in configs. Full field reference:
@@ -65,7 +68,7 @@ DATA LAYOUT
   data/runs/<run_id>.json  human/LLM-readable sidecar: resolved config, seed,
                            counts, stage status
   data/annotations/        annotate output (questions, results, frames)
-  models/                  Qwen3.5-9B Q6_K GGUF + mmproj (gitignored)
+  models/                  optional local GGUF + mmproj paths (gitignored)
 """
 
 

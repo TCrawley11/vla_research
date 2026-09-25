@@ -1,20 +1,16 @@
 # Data directory
+---
+Find the dataset here: https://huggingface.co/datasets/VLA-uwo-2026/six_cam_1600x900
+---
 
-Canonical home for all captured data going forward. The legacy locations
-(`dataset/run01/` PNG-per-frame layout and the root `dataset.h5` real-robot
-capture) are superseded by this structure; new CARLA runs are captured directly
-to HDF5 here.
+Home for data when running the pipeline locally. Otherwise, it serves as an instruction document for the data structure, and a reminder that the dataset is on huggingface ;)
 
+Dataset structure locally:
 ```
 data/
   runs/     one self-contained <run_id>.h5 per capture run,
             plus a <run_id>.json sidecar (see below)
 ```
-
-Everything under `runs/` is gitignored (large binaries); only this README and
-the directory structure are tracked. A run file is fully self-contained
-(frames, telemetry, camera config, sample index, trajectories, actions) so a
-single `.h5` can be shared or moved to a training machine on its own.
 
 ## Run sidecar (`data/runs/<run_id>.json`)
 
@@ -39,8 +35,8 @@ One file per recording session. Two index spaces:
 - **N** = captured frames at the raw 30 fps tick rate. All per-frame datasets
   (`/images/*`, `/telemetry/*`, `/map_context/*`) share this index, aligned
   with `/telemetry/frame_id`.
-- **S** = built samples (one per key frame, every 1 s per the instruction
-  document). All per-sample datasets (`/sample_index/*`, `/trajectory/*`,
+- **S** = built samples, one per key frame, every 1 s.
+  All per-sample datasets (`/sample_index/*`, `/trajectory/*`,
   `/action/*`) share this index.
 
 Sample datasets reference frames by **index into the N axis** (`*_index`
@@ -59,7 +55,7 @@ fields), not by frame_id, so slicing a clip is a direct array slice.
 | `clip_sec` | float | sample clip length in seconds (3.0) |
 | `sample_period_sec` | float | one sample per this much sim time (1.0) |
 | `horizon_sec` | float | future trajectory horizon in seconds (3.0) |
-| `waypoint_period_sec` | float | future waypoint spacing in seconds (0.5); absent on runs captured before 2026-07-26, where it defaults to 0.5 at build time |
+| `waypoint_period_sec` | float | future waypoint spacing in seconds (0.5) |
 | `seed` | int | resolved run seed (python/numpy/TM) |
 | `coordinate_convention` | str | `"ROS REP-103: x forward, y left, z up; yaw rad; +w = left"` |
 | `created_utc` | str | ISO-8601 capture start time |
@@ -125,7 +121,7 @@ fields), not by frame_id, so slicing a clip is a direct array slice.
     future_waypoints_map_frame  (S, T, 2) float64   (x, y) map frame
     future_waypoints_ego_frame  (S, T, 2) float64   (x, y) in the key frame's ego frame
     trajectory_type             (S,) vlen str       STRAIGHT / LEFT_CURVE /
-                                                    RIGHT_CURVE / STOPPING
+                                                    RIGHT_CURVE
                                                     (T = 6 for a 3 s horizon at 0.5 s)
 
 /action/
@@ -152,10 +148,6 @@ never by position.
 
 ### Human-readable zones from `/map_context`
 
-The instruction document's `map_context.zone` uses hand-drawn semantic zones
-on a lab mat. CARLA runs keep the native OpenDRIVE identifiers (stable,
-exact, per-map) and derive the human-readable zone from them on demand:
-
 | human-readable zone | derived from |
 |---|---|
 | `intersection` | `is_junction == 1` |
@@ -169,13 +161,21 @@ directions, `NONE` = keep lane. `nearest_landmark` carries the closest signal
 or sign name (e.g. a traffic light pole), the analogue of the document's
 `nearest_landmark` example.
 
-### Conventions carried over from the PNG layout
+### Motion labels (sample schema version 2)
 
-- One run per file; never mix sessions. Bump the run id to keep an old run
-  instead of overwriting it.
-- `frame_id` is the contiguous 30 fps index.
-- Camera config is constant per run and stored once, inside the file.
-- Per-frame datasets are created resizable (`maxshape=(None, ...)`) and
-  appended each tick, so a crashed run keeps everything written so far. The
-  per-sample groups (`/sample_index/`, `/trajectory/`, `/action/`) are written
-  by the build step after capture ends.
+`build-samples` writes causal labels from raw telemetry using
+`capture.motion_labels` in the capture YAML (`configs/base.yaml`). Those
+settings are stored on the run as `motion_label_config`. Rebuilds reuse them
+(or model defaults on legacy runs) and replace derived groups only.
+
+- `/motion/motion_state`: `STATIONARY`, `CREEPING`, `MOVING`, or `UNKNOWN`
+- `/motion/smoothed_speed_mps`: filtered speed at the key frame
+- `/motion/stationary_throughout`, `comes_to_stop`, `starts_moving`: horizon flags
+- `/motion/events_valid`: false if any state in the interval is `UNKNOWN`
+- `/motion_telemetry/*`: the same signals on the raw-frame axis
+
+Default filter is a trailing 7-frame median. Confirmations, without backdating:
+stationary below 0.15 m/s for 0.5 s, leave above 0.35 m/s for 0.2 s,
+creeping from moving below 1.0 m/s for 0.3 s, moving above 1.5 m/s for 0.3 s.
+`STOP` requires confirmed `STATIONARY`. `trajectory_type` is geometry only
+(`STRAIGHT` / `LEFT_CURVE` / `RIGHT_CURVE`).

@@ -1,7 +1,7 @@
 """Build <out_dir>/inspection.html: key frames next to each model's captions
 and QA so annotations can be eyeballed against the images.
 
-Reads the team-schema result files written by annotate_benchmark.py
+Reads the team-schema result files written by openrouter_bench.py
 (<sample_id>__<model>.json) plus the frames/ directory of key-frame JPEGs.
 When every model on a sample answered the same question set (the benchmark's
 normal shape) the answers are laid out one question per row, one column per
@@ -17,14 +17,14 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-CAM_ORDER = ["FRONT_LEFT", "FRONT", "FRONT_RIGHT", "BACK"]
+CAM_ORDER = ["FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]
 QA_ORDER = ["perception", "prediction", "planning", "behaviour"]
 
 CSS = """
 body { font-family: sans-serif; margin: 1.5rem; background: #16181d; color: #dfe3ea; }
 h1 { font-size: 1.3rem; } h2 { font-size: 1.1rem; margin: 0 0 .3rem; }
 .sample { border: 1px solid #333a46; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; }
-.frames { display: flex; gap: .5rem; margin-bottom: .6rem; }
+.frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: .6rem; }
 .frames figure { margin: 0; flex: 1; min-width: 0; }
 .frames img { width: 100%; border-radius: 4px; }
 .frames figcaption { font-size: .75rem; text-align: center; color: #9aa3b2; }
@@ -66,11 +66,19 @@ def meta_line(d: dict) -> str:
         bits.append(f"via {meta['provider']}")
     bits.append(f"response_format {meta.get('response_format', '?')}")
     bits.append(f"prompt {d.get('prompt_id', '?')}")
+    bits.extend(meta.get("quality_issues", []))
     return html.escape(", ".join(bits))
 
 
 def question_key(d: dict) -> tuple:
     return tuple((p["type"], p["question"]) for p in d["annotation"]["qa_pairs"])
+
+
+def question_label(pair: dict) -> str:
+    label = html.escape(f"{pair.get('id', '')} {pair['type']}".strip())
+    if pair.get("purpose"):
+        label += f"<br><small>{html.escape(pair['purpose'].replace('_', ' '))}</small>"
+    return label
 
 
 def render_shared(models: dict) -> str:
@@ -88,7 +96,7 @@ def render_shared(models: dict) -> str:
         cells = "".join(
             f"<td>{html.escape(models[m]['annotation']['qa_pairs'][i]['answer'])}</td>"
             for m in names)
-        qa_rows.append(f"<tr><td class=qtype>{p.get('id', '')} {p['type']}</td>"
+        qa_rows.append(f"<tr><td class=qtype>{question_label(p)}</td>"
                        f"<td class=q>{html.escape(p['question'])}</td>{cells}</tr>")
     meta_cells = "".join(f"<td class=meta>{meta_line(models[m])}</td>" for m in names)
     qs = first.get("question_set") or {}
@@ -109,7 +117,7 @@ def render_model(model: str, d: dict) -> str:
     rows = []
     pairs = sorted(a["qa_pairs"], key=lambda p: QA_ORDER.index(p["type"]))
     for p in pairs:
-        rows.append(f"<tr><td class=qtype>{p['type']}</td>"
+        rows.append(f"<tr><td class=qtype>{question_label(p)}</td>"
                     f"<td>{html.escape(p['question'])}</td>"
                     f"<td>{html.escape(p['answer'])}</td></tr>")
     return f"""<div class=model>
@@ -148,11 +156,11 @@ def render_summary(by_sample: dict) -> str:
 {''.join(rows)}</table></div>"""
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--dir", type=Path, default=Path("data/annotation_test"),
                     help="benchmark out_dir holding <sample>__<model>.json and frames/")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     out_dir = args.dir
     by_sample = load_results(out_dir)
     if not by_sample:
@@ -169,7 +177,7 @@ def main():
         gt_line = (f"action <b>{gt['action_label']}</b> | "
                    f"v {gt['v']:.2f} m/s, w {gt['w']:.3f} rad/s | "
                    f"past {gt.get('past_action', '?')} | traj {gt['trajectory_type']} | "
-                   f"forward displacement {wp[-1][0]:.1f} m in 3 s | "
+                   f"forward displacement {wp[-1][0]:.1f} m in {gt.get('horizon_sec', 3):g} s | "
                    f"sample index {gt['sample_index']}")
         shared = len({question_key(d) for d in models.values()}) == 1
         body = (render_shared(models) if shared else

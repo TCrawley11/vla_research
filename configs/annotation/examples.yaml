@@ -1,76 +1,976 @@
-# Example pool for the annotation benchmark (enable via the `examples` block
-# in configs/annotation/benchmark.yaml). Each entry is one finished annotation
-# from a scene that is NOT in the eval set, shown to the annotator as
-# format/style reference; k are picked per sample, seeded by the sample id.
-# Content here is hand-written draft material - replace freely with curated
-# real model outputs. Every entry is validated against the configured word
-# limits at load time (ExampleAnnotation / load_examples in
-# scripts/annotate_benchmark.py), so an example can never contradict the
-# limits stated in the prompt.
-
-- scene: stopped at a red light behind a sedan, urban intersection
-  caption_short: The ego vehicle is stopped at a red light behind a white sedan at an urban intersection.
-  caption_detailed: >-
-    The ego vehicle waits at a signalized four-way intersection where the
-    traffic light directly ahead shows red. A white sedan is stopped
-    immediately in front, and a cyclist waits near the crosswalk to the right.
-    Lane markings separate two through lanes and a left-turn lane. The road is
-    dry under clear daylight, and cross traffic passes through the
-    intersection.
+# Curated from 12 real six-camera scenes across five towns.
+# Source runs are excluded when selecting examples for a target sample.
+# Observations and answers were reviewed against the exported frames.
+- scene: Right turn on a rainy street with a van and rear pedestrian
+  source_run: run01
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run01_000675
+    sample_index: 21
+    key_frame_id: 675
+    action_label: RIGHT_TURN
+    past_action: RIGHT_TURN
+    trajectory_type: RIGHT_CURVE
+    v: 6.847
+    w: -1.140
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 3.41
+      - -1.76
+    - - 6.06
+      - -4.77
+    - - 8.48
+      - -8.01
+    - - 10.89
+      - -11.24
+    - - 13.32
+      - -14.46
+    - - 15.76
+      - -17.68
+  observations:
+    FRONT: Wet junction; reflective pavement, rain streaks and glare.
+    FRONT_RIGHT: Red van on the road being entered; roadside 30 sign.
+    BACK: Dark car on the road; pedestrian on the sidewalk.
+    BACK_RIGHT: Part of another vehicle visible.
+  caption_short: Ego is turning right at a wet urban junction.
+  caption_detailed: FRONT shows a wet junction with reflective pavement. FRONT_RIGHT shows a red van on
+    the road being entered and a roadside 30 sign. BACK shows a dark car and a pedestrian on the sidewalk,
+    while BACK_RIGHT includes part of another vehicle. Rain streaks and glare reduce clarity.
   qa_pairs:
-    - type: perception
-      question: What is the state of the traffic light ahead, and what vehicles are visible in front of the ego vehicle?
-      answer: The light directly ahead is red. A white sedan is stopped immediately ahead of the ego vehicle in the same lane.
-    - type: prediction
-      question: What does the recorded trajectory show the ego vehicle doing over the next 3 seconds?
-      answer: It remains stationary, with essentially zero forward displacement over the horizon.
-    - type: planning
-      question: What should the ego vehicle do next, and what should it check before moving?
-      answer: Stay stopped until the light turns green, then check the sedan ahead and the cyclist near the crosswalk before pulling away.
-    - type: behaviour
-      question: What is the ego vehicle's current motion state?
-      answer: It is fully stopped, with zero forward and angular velocity, waiting at the red light.
-
-- scene: slowing into a right turn at a T-junction, light traffic
-  caption_short: The ego vehicle slows and begins a right turn at a T-junction.
-  caption_detailed: >-
-    The ego vehicle approaches a T-junction and steers into a right turn. The
-    curb and a give-way marking are visible ahead, and an oncoming hatchback
-    passes on the left. Trees line both sides of the target road, which is
-    clear of traffic. Lighting is overcast but visibility is good, and the
-    pavement is dry.
+  - type: perception
+    question: Where does the road turn in FRONT?
+    answer: The road turns right around the sidewalk corner.
+  - type: perception
+    question: What vehicle is visible on the road in FRONT_RIGHT?
+    answer: A red van is visible on that road.
+  - type: perception
+    question: What number is shown on the circular sign in FRONT_RIGHT?
+    answer: The sign shows 30.
+  - type: perception
+    question: What separates the directions of travel in FRONT_RIGHT?
+    answer: A broken yellow center line separates the directions of travel.
+  - type: perception
+    question: What makes the road surface difficult to see clearly?
+    answer: Rain and reflections on wet pavement reduce clarity.
+  - type: perception
+    question: Where is the pedestrian in BACK?
+    answer: The pedestrian is on the sidewalk to the right in BACK.
+  - type: prediction
+    question: How does ego drive through the wet junction in the recording?
+    answer: Ego continues turning right at about the same speed.
+  - type: prediction
+    question: If the van in FRONT_RIGHT slows on the road being entered, what conflict could develop?
+    answer: Ego could approach the van while completing the turn.
+  - type: prediction
+    question: If the pedestrian in BACK steps off the sidewalk, which maneuver could create a conflict?
+    answer: Reversing toward that area could bring ego into the pedestrian’s path.
+  - type: planning
+    question: How should ego account for the red van while turning right?
+    answer: Check the van’s position and leave space while entering the road.
+  - type: planning
+    question: Why should ego allow extra stopping space on this wet road?
+    answer: Wet pavement can reduce grip and increase the distance needed to stop.
+  - type: planning
+    question: Which view should ego check before reversing near the visible pedestrian?
+    answer: Check BACK, where the pedestrian is visible on the sidewalk.
+  - type: planning
+    question: What should ego check about the roadside 30 sign before choosing a speed?
+    answer: Check that the sign applies to the road being entered and keep within its applicable limit.
+  - type: behaviour
+    question: How is ego taking the corner in FRONT?
+    answer: It is turning right around the corner.
+- scene: Slowing behind a van on a rain-soaked straight road
+  source_run: run01
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run01_000795
+    sample_index: 25
+    key_frame_id: 795
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: STRAIGHT
+    v: 5.562
+    w: 0.001
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 2.36
+      - 0.00
+    - - 3.79
+      - 0.00
+    - - 4.80
+      - 0.00
+    - - 5.80
+      - 0.00
+    - - 7.25
+      - 0.00
+    - - 8.89
+      - 0.00
+  observations:
+    FRONT: Red van ahead on a straight street; yellow center markings and distant traffic signals; rain
+      streaks and puddles.
+    FRONT_RIGHT: Construction fence beside the sidewalk.
+    BACK: Wet road with strong glare.
+  caption_short: Ego is moving along a wet street behind a red van.
+  caption_detailed: FRONT shows a red van ahead on a straight street with yellow center markings and distant
+    traffic signals. Rain streaks and puddles are visible. FRONT_RIGHT shows a construction fence beside
+    the sidewalk, and BACK looks along the wet road into strong glare. No pedestrians are clearly visible
+    in these views.
   qa_pairs:
-    - type: perception
-      question: Is there any oncoming traffic while the ego vehicle turns?
-      answer: Yes, one oncoming hatchback passes on the left; the target road itself is clear.
-    - type: prediction
-      question: How far does the ego vehicle travel over the horizon, and along what path?
-      answer: It moves about 9.8 m forward while curving right, slowing from about 4.1 m/s as it rounds the corner.
-    - type: planning
-      question: How should the ego vehicle execute the upcoming maneuver?
-      answer: Continue the right turn at low speed, yielding to the oncoming hatchback and staying within the target lane.
-    - type: behaviour
-      question: What maneuver is the ego vehicle performing right now?
-      answer: It is turning right at about 4.1 m/s with a negative angular velocity, midway through the junction.
-
-- scene: cruising on a two-lane road behind a truck, clear day
-  caption_short: The ego vehicle cruises steadily behind a truck on a two-lane road.
-  caption_detailed: >-
-    The ego vehicle follows a box truck at a steady distance on a straight
-    two-lane road. A solid center line separates the opposing lanes, and a
-    speed limit sign stands on the right shoulder. No pedestrians are visible.
-    The sky is clear, shadows are sharp, and the road surface is dry with
-    clearly painted edge lines.
+  - type: perception
+    question: What is the road layout ahead in FRONT?
+    answer: A straight road leads toward a signalized junction.
+  - type: perception
+    question: What is directly ahead of ego in FRONT?
+    answer: A red van is ahead in the same road corridor.
+  - type: perception
+    question: Are traffic signals visible ahead in FRONT?
+    answer: Yes. Distant traffic signals are visible, but their state is not clear enough to assert.
+  - type: perception
+    question: What center markings are visible in FRONT?
+    answer: Broken yellow center markings are visible.
+  - type: perception
+    question: What is the surface condition in FRONT?
+    answer: The pavement is wet, with visible puddles and reflections.
+  - type: perception
+    question: What limits the distant view in BACK?
+    answer: Strong glare over the wet road limits the distant view.
+  - type: prediction
+    question: How does ego drive behind the van over the next three seconds?
+    answer: Ego keeps going straight and slows down, but is still moving after three seconds.
+  - type: prediction
+    question: If the red van ahead brakes, what could happen if ego maintains its approach speed?
+    answer: The gap could shrink, increasing the risk of reaching the van’s rear.
+  - type: prediction
+    question: If glare in BACK obscures an approaching vehicle, which maneuver becomes harder to assess?
+    answer: Reversing or changing lanes becomes harder to assess because rear traffic may be obscured.
+  - type: planning
+    question: How should ego account for the red van on the wet road?
+    answer: Leave room to brake and adjust speed if the van slows.
+  - type: planning
+    question: Why is the construction fence in FRONT_RIGHT relevant before moving toward the roadside?
+    answer: It borders the sidewalk and constrains the space available near the road edge.
+  - type: planning
+    question: How should strong rear glare affect a lane-change decision?
+    answer: Check rear traffic carefully and defer the maneuver if the view is insufficient.
+  - type: planning
+    question: What should ego establish about the distant signals before entering their junction?
+    answer: Identify the signal relevant to its lane and confirm its state before entering.
+  - type: behaviour
+    question: Is ego driving ahead of or behind the red van?
+    answer: Ego is moving on the road behind the van.
+- scene: Stopped beneath an elevated railway before pulling away
+  source_run: run02
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run02_000135
+    sample_index: 3
+    key_frame_id: 135
+    action_label: STOP
+    past_action: STOP
+    trajectory_type: STRAIGHT
+    v: 0.000
+    w: -0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.16
+      - -0.00
+    - - 1.56
+      - 0.00
+    - - 4.27
+      - 0.00
+    - - 8.13
+      - 0.00
+  observations:
+    FRONT: Straight road beneath an elevated railway; yellow center lines and white markings near a side
+      junction; alternating sunlight and shadows; no vehicle clearly visible in the immediate road ahead.
+    BACK_LEFT: Pedestrian beside a brick building.
+  caption_short: Ego is stopped on an urban road beneath an elevated railway.
+  caption_detailed: FRONT shows a straight road beneath an elevated railway, with yellow center lines
+    and white road markings near a side junction. BACK_LEFT shows a pedestrian beside a brick building.
+    No vehicle is clearly visible in the immediate road ahead. Strong alternating sunlight and railway
+    shadows fall across the pavement.
   qa_pairs:
-    - type: perception
-      question: What signage is visible along the road?
-      answer: A speed limit sign stands on the right shoulder; no other signs or signals are visible.
-    - type: prediction
-      question: Is the ego vehicle expected to change its speed over the next 3 seconds?
-      answer: No, the trajectory shows it continuing straight at a roughly steady 7.9 m/s.
-    - type: planning
-      question: What should the ego vehicle do while following the truck?
-      answer: Continue driving forward at its current speed, keeping a steady following distance and staying centered in its lane.
-    - type: behaviour
-      question: Describe the ego vehicle's current motion.
-      answer: It is driving forward at 7.9 m/s in a straight line, with negligible angular velocity.
+  - type: perception
+    question: What overhead structure is visible in FRONT?
+    answer: An elevated railway spans the road.
+  - type: perception
+    question: Where is a pedestrian visible in these images?
+    answer: A pedestrian is visible on the sidewalk in BACK_LEFT.
+  - type: perception
+    question: Is a traffic-light state clearly readable in FRONT?
+    answer: No clearly readable traffic-light state is visible in FRONT.
+  - type: perception
+    question: What markings separate opposing traffic in FRONT?
+    answer: Double yellow center lines separate opposing directions.
+  - type: perception
+    question: What causes the bands of shadow on the road?
+    answer: The elevated railway casts bands of shadow.
+  - type: perception
+    question: What does BACK show behind ego?
+    answer: BACK shows the road continuing beneath the elevated railway.
+  - type: prediction
+    question: What does ego do next beneath the railway in the recording?
+    answer: Ego starts moving and continues along the straight road.
+  - type: prediction
+    question: If the pedestrian in BACK_LEFT enters the road, which maneuver could bring ego closer?
+    answer: Moving backward toward the left rear could bring ego closer to the pedestrian.
+  - type: prediction
+    question: If a vehicle emerges from the side junction in FRONT, what conflict could develop?
+    answer: It could cross in front of ego.
+  - type: planning
+    question: What should ego check before pulling away near the side junction?
+    answer: Check the junction for entering traffic and confirm the forward route is clear.
+  - type: planning
+    question: How should alternating sunlight and railway shadows affect scanning?
+    answer: Check shaded areas carefully where road users or markings may be harder to distinguish.
+  - type: planning
+    question: Why is the pedestrian in BACK_LEFT relevant before reversing?
+    answer: The pedestrian is near the left rear, so reversing requires checking that area for clearance.
+  - type: planning
+    question: How should ego use the visible yellow center lines when moving off?
+    answer: Keep to its side of the marked roadway while checking the junction.
+  - type: behaviour
+    question: Where is ego currently waiting in the scene?
+    answer: It is stopped on the road beneath the elevated railway.
+- scene: Steady travel beneath the railway near a junction
+  source_run: run02
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run02_000795
+    sample_index: 25
+    key_frame_id: 795
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: STRAIGHT
+    v: 8.069
+    w: 0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 4.04
+      - -0.00
+    - - 8.07
+      - -0.00
+    - - 12.11
+      - -0.00
+    - - 16.15
+      - -0.01
+    - - 20.18
+      - -0.08
+    - - 24.21
+      - -0.29
+  observations:
+    FRONT: Straight road beneath an elevated railway approaching a junction; buildings beyond, double yellow
+      center lines and white lane boundaries.
+    FRONT_RIGHT: Small red vehicle partly visible beside a building.
+    BACK: Railway continuing along the road; no nearby pedestrian clearly visible.
+  caption_short: Ego moves along a marked urban road beneath an elevated railway.
+  caption_detailed: FRONT shows a straight road under an elevated railway, approaching a junction with
+    buildings beyond. Double yellow center lines and white lane boundaries are visible. FRONT_RIGHT includes
+    a small red vehicle partly visible beside a building. BACK shows the railway continuing along the
+    road behind, with no nearby pedestrian clearly visible.
+  qa_pairs:
+  - type: perception
+    question: What road feature is ahead beneath the railway in FRONT?
+    answer: A junction is ahead beneath the elevated railway.
+  - type: perception
+    question: Where is a small vehicle partly visible?
+    answer: A small red vehicle is partly visible beside a building in FRONT_RIGHT.
+  - type: perception
+    question: Are any signal colors clearly readable in FRONT?
+    answer: No signal color is clearly readable in FRONT.
+  - type: perception
+    question: What lane markings are visible in FRONT?
+    answer: Double yellow center lines and white lane boundaries are visible.
+  - type: perception
+    question: How does the railway affect lighting on the road?
+    answer: It creates alternating shaded and sunlit areas.
+  - type: perception
+    question: What does BACK show along the route behind?
+    answer: The elevated railway and marked road continue behind ego.
+  - type: prediction
+    question: How does ego approach the junction beneath the railway in the recording?
+    answer: Ego continues straight at about the same speed.
+  - type: prediction
+    question: If the partly visible vehicle in FRONT_RIGHT enters the road, what conflict could develop?
+    answer: It could pull out in front of ego near the junction.
+  - type: prediction
+    question: If railway shadows hide a road user near the junction, how could the approach be affected?
+    answer: Ego could detect the road user late, leaving less time to respond.
+  - type: planning
+    question: Which traffic should ego check before proceeding through the junction?
+    answer: Check the intersecting road and the partly visible vehicle in FRONT_RIGHT.
+  - type: planning
+    question: Why should ego avoid assuming the partly visible vehicle will remain beside the building?
+    answer: Its next movement is not established by this single view.
+  - type: planning
+    question: What should ego do if the relevant signal cannot be read on approach?
+    answer: Reduce speed as needed and establish the applicable signal or priority before entering.
+  - type: planning
+    question: How should ego use the lane boundaries beneath the railway?
+    answer: Stay within the marked corridor and leave room for traffic that may enter at the junction.
+  - type: behaviour
+    question: How is ego driving along the road beneath the railway?
+    answer: Ego is moving forward along the road beneath the railway.
+- scene: Accelerating on a hazy divided highway
+  source_run: run03
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run03_000075
+    sample_index: 1
+    key_frame_id: 75
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: STRAIGHT
+    v: 12.844
+    w: 0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 6.99
+      - -0.00
+    - - 15.06
+      - -0.00
+    - - 24.14
+      - -0.02
+    - - 34.20
+      - -0.05
+    - - 45.18
+      - -0.08
+    - - 57.02
+      - -0.11
+  observations:
+    FRONT: Broad divided highway; dashed white lane lines and right-side guardrail; haze obscuring the distance;
+      no nearby vehicles or pedestrians clearly visible.
+    FRONT_RIGHT: Rocks and trees beyond the guardrail.
+    BACK: Marked highway extending behind ego.
+  caption_short: Ego is moving on a divided highway with reduced distant visibility.
+  caption_detailed: FRONT shows a broad divided highway with dashed white lane lines and a guardrail on
+    the right. Haze obscures the distance, and no nearby vehicles or pedestrians are clearly visible.
+    FRONT_RIGHT shows rocks and trees beyond the guardrail. BACK shows the marked highway extending behind
+    ego.
+  qa_pairs:
+  - type: perception
+    question: What type of road is visible in FRONT?
+    answer: A broad divided highway is visible.
+  - type: perception
+    question: Are nearby road users clearly visible in FRONT?
+    answer: No nearby vehicles or pedestrians are clearly visible in FRONT.
+  - type: perception
+    question: What bounds the roadway on the right in FRONT?
+    answer: A guardrail bounds the roadway on the right.
+  - type: perception
+    question: What separates the highway lanes in FRONT?
+    answer: Dashed white lines separate the lanes.
+  - type: perception
+    question: What limits distant visibility in FRONT?
+    answer: Haze limits distant visibility.
+  - type: perception
+    question: What is outside the road edge in FRONT_RIGHT?
+    answer: A guardrail separates the road from rocks and trees.
+  - type: prediction
+    question: How does ego drive on the divided highway over the next three seconds?
+    answer: Ego keeps going straight and speeds up over the next three seconds.
+  - type: prediction
+    question: If a vehicle becomes visible only after emerging from the haze, what risk increases?
+    answer: Ego may have less time and distance to respond to that vehicle.
+  - type: prediction
+    question: If ego drifts right on this stretch, what visible boundary could it approach?
+    answer: It could approach the right-side guardrail.
+  - type: planning
+    question: How should haze affect ego’s speed choice on the highway?
+    answer: Choose a speed that allows a response within the visible road ahead.
+  - type: planning
+    question: Why does an empty nearby view not establish that acceleration is safe?
+    answer: Haze obscures the distance, so the view does not establish that the road farther ahead is clear.
+  - type: planning
+    question: What should ego check before moving toward the highway’s right edge?
+    answer: Check its clearance from the guardrail and remain on the roadway.
+  - type: planning
+    question: How should ego maintain its lane when distant markings are hard to see?
+    answer: Use the visible lane boundaries and reduce speed if they cannot be followed confidently.
+  - type: behaviour
+    question: Is ego driving along the highway or across it?
+    answer: It is moving along the highway rather than across it.
+- scene: Highway curve with traffic beyond the divider
+  source_run: run03
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run03_000795
+    sample_index: 25
+    key_frame_id: 795
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: LEFT_CURVE
+    v: 24.182
+    w: 0.140
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 12.09
+      - 0.23
+    - - 24.13
+      - 1.27
+    - - 36.07
+      - 3.15
+    - - 47.86
+      - 5.85
+    - - 59.43
+      - 9.34
+    - - 70.74
+      - 13.63
+  observations:
+    FRONT: Broad highway bending left; dashed lane markings and right-side guardrail; haze reducing distant
+      visibility.
+    BACK_LEFT: Part of a light-colored vehicle beyond the concrete divider; no nearby pedestrian clearly
+      visible.
+  caption_short: Ego moves along a highway that bends left through haze.
+  caption_detailed: FRONT shows a broad highway bending left, with dashed lane markings and a right-side
+    guardrail. Haze reduces distant visibility. BACK_LEFT shows part of a light-colored vehicle beyond
+    the concrete divider; no nearby pedestrians are clearly visible. Trees and rocky slopes surround the
+    roadway.
+  qa_pairs:
+  - type: perception
+    question: Which way does the highway bend in FRONT?
+    answer: The highway bends left.
+  - type: perception
+    question: Where is a light-colored vehicle partly visible?
+    answer: It is partly visible beyond the concrete divider in BACK_LEFT.
+  - type: perception
+    question: What bounds the highway on the right in FRONT?
+    answer: A guardrail follows the right side of the highway.
+  - type: perception
+    question: What markings guide traffic through the curve?
+    answer: Dashed white lane lines follow the curve.
+  - type: perception
+    question: What reduces distant visibility on the highway?
+    answer: Haze reduces distant visibility.
+  - type: perception
+    question: What separates the vehicle in BACK_LEFT from ego's roadway?
+    answer: A concrete divider separates the roadways.
+  - type: prediction
+    question: How does ego take the highway bend in the recording?
+    answer: Ego follows the left bend at about the same speed.
+  - type: prediction
+    question: If ego continues straight instead of following the left bend, what boundary could it approach?
+    answer: It could approach the outside road edge and right-side guardrail.
+  - type: prediction
+    question: If haze hides slower traffic farther around the bend, what risk could develop?
+    answer: Ego could encounter that traffic with limited time to slow.
+  - type: planning
+    question: How should ego choose speed for the bend in haze?
+    answer: Choose a speed that allows it to follow the curve and respond within the visible distance.
+  - type: planning
+    question: Why is the concrete divider relevant when assessing the vehicle in BACK_LEFT?
+    answer: It separates that vehicle from ego’s roadway; nearby appearance alone does not establish a shared
+      travel lane.
+  - type: planning
+    question: What should guide steering through this highway curve?
+    answer: Follow the curved lane markings while maintaining clearance from the road edges.
+  - type: planning
+    question: Where should ego look while driving around the bend?
+    answer: Check the lane ahead as it becomes visible through the haze.
+  - type: behaviour
+    question: Does the FORWARD label mean ego is going completely straight here?
+    answer: No. Ego is turning slightly left as it follows the highway.
+- scene: Leaving a stop near an urban junction and pedestrian
+  source_run: run04
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run04_000345
+    sample_index: 10
+    key_frame_id: 345
+    action_label: FORWARD
+    past_action: STOP
+    trajectory_type: LEFT_CURVE
+    v: 4.585
+    w: 0.084
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 2.83
+      - 0.28
+    - - 6.67
+      - 1.24
+    - - 10.17
+      - 3.16
+    - - 12.97
+      - 6.03
+    - - 14.75
+      - 9.61
+    - - 15.50
+      - 13.58
+  observations:
+    FRONT: Junction with crosswalk markings; blue car beyond the junction and pedestrian near the right
+      sidewalk; clear nearby visibility.
+    FRONT_LEFT: Traffic signals and distant vehicles along the intersecting street.
+    FRONT_RIGHT: Elevated roadway beside the junction.
+  caption_short: Ego moves through an urban junction beside an elevated roadway.
+  caption_detailed: FRONT shows a junction, a blue car beyond it, and a pedestrian near the right sidewalk.
+    Crosswalk markings span the road. FRONT_LEFT shows traffic signals and distant vehicles along the
+    intersecting street. FRONT_RIGHT shows the elevated roadway beside the junction. The scene is brightly
+    lit with clear nearby visibility.
+  qa_pairs:
+  - type: perception
+    question: What road layout is visible in FRONT?
+    answer: An urban junction with a crosswalk is visible.
+  - type: perception
+    question: Where is the pedestrian in FRONT?
+    answer: The pedestrian is beside the sidewalk on the right.
+  - type: perception
+    question: Are traffic signals visible in FRONT_LEFT?
+    answer: Yes. Traffic signal heads are visible, but their state is not clearly readable.
+  - type: perception
+    question: What white markings cross the road ahead?
+    answer: White crosswalk markings span the road.
+  - type: perception
+    question: How clear is the nearby scene?
+    answer: Nearby road features are clearly visible in daylight.
+  - type: perception
+    question: What structure runs beside the road in FRONT_RIGHT?
+    answer: An elevated roadway runs beside the junction.
+  - type: prediction
+    question: What does ego do after the recent stop near this junction?
+    answer: Ego speeds up while turning left.
+  - type: prediction
+    question: If the pedestrian on the right enters the crosswalk, what conflict could develop?
+    answer: The pedestrian could enter the area ego is approaching through the junction.
+  - type: prediction
+    question: If traffic enters from the intersecting street in FRONT_LEFT, what could happen during ego’s
+      turn?
+    answer: The entering traffic could cross or merge with ego’s turning path.
+  - type: planning
+    question: How should ego account for the pedestrian near the right sidewalk?
+    answer: Watch the pedestrian and be prepared to yield if they enter the crossing.
+  - type: planning
+    question: What should ego confirm about the visible signals before entering the junction?
+    answer: Confirm the signal relevant to its lane and its state; visibility of signal heads alone is insufficient.
+  - type: planning
+    question: Which traffic needs checking before the leftward maneuver?
+    answer: Check traffic on the intersecting street in FRONT_LEFT and the route through the junction.
+  - type: planning
+    question: Why should ego keep the crosswalk clear when waiting at this junction?
+    answer: Keeping it clear preserves space for pedestrians to cross.
+  - type: behaviour
+    question: Is ego still stopped, or has it started moving?
+    answer: Ego is moving now after recently being stopped.
+- scene: Stopped at red signals with differently colored side signals
+  source_run: run04
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run04_000795
+    sample_index: 25
+    key_frame_id: 795
+    action_label: STOP
+    past_action: STOP
+    trajectory_type: STOPPING
+    v: 0.000
+    w: 0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+  observations:
+    FRONT: Broad junction; red signal heads facing the road ahead; white line across the road before the junction; distant vehicles; no nearby pedestrian clearly visible.
+    FRONT_LEFT: Side-facing signal heads appear yellow.
+    BACK: Approach road with an overpass farther behind.
+  caption_short: Ego is stopped before a signalized urban junction.
+  caption_detailed: FRONT shows a broad junction with red signal heads facing the road ahead and a white line across the road before it. Signals to the left appear yellow in FRONT_LEFT. Distant vehicles are visible ahead, but no nearby pedestrians are clearly visible. BACK shows the approach road and an overpass farther behind.
+  qa_pairs:
+  - type: perception
+    question: What road layout is directly ahead in FRONT?
+    answer: A broad signalized junction is ahead.
+  - type: perception
+    question: Are vehicles visible beyond the junction in FRONT?
+    answer: Yes. Distant vehicles are visible beyond the junction.
+  - type: perception
+    question: What color are the signal heads facing the road ahead in FRONT?
+    answer: Those signal heads are red.
+  - type: perception
+    question: What marking lies across ego's lane before the junction?
+    answer: A white stop line runs across the lane.
+  - type: perception
+    question: Is nearby visibility obscured by heavy fog?
+    answer: No. Nearby junction details are clearly visible.
+  - type: perception
+    question: What color do the side-facing signals appear in FRONT_LEFT?
+    answer: They appear yellow; this does not establish permission for ego to move.
+  - type: prediction
+    question: What does ego do at this junction over the next three seconds?
+    answer: Ego stays stopped for the next three seconds.
+  - type: prediction
+    question: If ego enters while a red signal controls its lane, what conflict could occur?
+    answer: It could enter the path of traffic or pedestrians permitted to cross.
+  - type: prediction
+    question: If ego starts while cross traffic is still passing through the junction, what conflict could develop?
+    answer: Ego could enter the crossing traffic’s path.
+  - type: planning
+    question: What should ego establish before treating the yellow signals in FRONT_LEFT as permission to
+      move?
+    answer: Establish whether they control ego’s lane; their side-facing appearance alone does not show
+      that.
+  - type: planning
+    question: What is the appropriate response if the red signals ahead control ego’s lane?
+    answer: Remain stopped until the applicable signal permits movement and the route is clear.
+  - type: planning
+    question: What should ego check before departing after receiving permission to move?
+    answer: Check for crossing traffic and pedestrians, and confirm that the route through the junction
+      is clear.
+  - type: planning
+    question: Why is the white line across the road relevant to waiting at this junction?
+    answer: It provides a visible stopping reference before the junction; ego should avoid advancing beyond
+      the applicable stop line.
+  - type: behaviour
+    question: Where is ego stopped near the junction?
+    answer: It is stopped before the junction.
+- scene: City traffic with a motorcycle, cars, and a truck behind
+  source_run: run05
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run05_000135
+    sample_index: 3
+    key_frame_id: 135
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: STRAIGHT
+    v: 8.075
+    w: -0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 4.04
+      - 0.00
+    - - 8.08
+      - 0.00
+    - - 12.12
+      - 0.00
+    - - 16.02
+      - 0.00
+    - - 19.65
+      - -0.00
+    - - 23.04
+      - -0.00
+  observations:
+    FRONT: Urban street; blue car and motorcycle to the left; lane lines and crossing markings in daylight.
+    FRONT_LEFT: Nearby silver car.
+    FRONT_RIGHT: Pedestrian near a tree; motorcycles beside the sidewalk.
+    BACK: Large red truck.
+  caption_short: Ego moves along a city street with traffic around it.
+  caption_detailed: FRONT shows an urban street with a blue car and a motorcycle to the left. FRONT_LEFT
+    shows a nearby silver car. BACK shows a large red truck, while FRONT_RIGHT includes a pedestrian near
+    a tree and motorcycles beside the sidewalk. Lane lines and crossing markings are visible in daylight.
+  qa_pairs:
+  - type: perception
+    question: What road layout is ahead in FRONT?
+    answer: A straight urban street leads toward a signalized junction.
+  - type: perception
+    question: Which road users are visible to the left in FRONT?
+    answer: A blue car and a motorcycle are visible to the left.
+  - type: perception
+    question: Are traffic signals visible farther ahead in FRONT?
+    answer: Yes. Distant traffic signals are visible, but their state is not clear enough to assert.
+  - type: perception
+    question: What marks the boundary between travel directions in FRONT?
+    answer: Double yellow center lines mark the boundary.
+  - type: perception
+    question: Are nearby road users clearly visible?
+    answer: Yes. Nearby road users are visible in daylight.
+  - type: perception
+    question: What large vehicle is behind ego in BACK?
+    answer: A large red truck is behind ego.
+  - type: prediction
+    question: How does ego drive along this street over the next three seconds?
+    answer: Ego keeps going straight and slows down, but is still moving after three seconds.
+  - type: prediction
+    question: If the motorcycle to the left moves into ego’s lane, what conflict could develop?
+    answer: It could reduce the available space ahead or alongside ego.
+  - type: prediction
+    question: If ego brakes abruptly with the red truck behind, what risk could increase?
+    answer: A rear-end conflict could become more likely, depending on the truck’s gap and response.
+  - type: planning
+    question: Which road users should ego check before moving left?
+    answer: Check the motorcycle and blue car in FRONT and the nearby silver car in FRONT_LEFT.
+  - type: planning
+    question: How should ego account for the pedestrian near the tree in FRONT_RIGHT?
+    answer: Monitor the pedestrian and leave room to yield if they approach the roadway.
+  - type: planning
+    question: Why should ego check BACK when preparing to slow?
+    answer: The red truck is behind ego, so rear traffic matters when choosing a controlled slowdown where
+      possible.
+  - type: planning
+    question: What should ego establish about the distant signals before entering the junction?
+    answer: Identify the signal relevant to its lane and confirm its state.
+  - type: behaviour
+    question: Is ego driving ahead of or behind the red truck?
+    answer: Ego is moving on the road ahead of the truck visible in BACK.
+- scene: Stopped by a city crossing with a truck alongside
+  source_run: run05
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run05_000795
+    sample_index: 25
+    key_frame_id: 795
+    action_label: STOP
+    past_action: STOP
+    trajectory_type: STOPPING
+    v: 0.000
+    w: -0.000
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+  observations:
+    FRONT: Signalized city junction; zebra crossing stripes and several signal heads.
+    FRONT_LEFT: Large red truck blocking much of the view.
+    FRONT_RIGHT: Sidewalk corner with bins and a shop; no nearby pedestrian clearly visible.
+    BACK: Truck chassis beside ego; distant cars.
+  caption_short: Ego is stopped near a city crossing with a red truck alongside.
+  caption_detailed: FRONT shows a signalized city junction with zebra crossing stripes and several signal
+    heads. A large red truck fills much of FRONT_LEFT, blocking that view. BACK includes the truck chassis
+    beside ego and distant cars. FRONT_RIGHT shows a sidewalk corner with bins and a shop; no nearby pedestrian
+    is clearly visible there.
+  qa_pairs:
+  - type: perception
+    question: What road feature is immediately ahead in FRONT?
+    answer: A zebra crossing and a signalized junction are ahead.
+  - type: perception
+    question: Which vehicle is alongside ego in FRONT_LEFT?
+    answer: A large red truck is alongside ego.
+  - type: perception
+    question: Can the controlling signal's color be identified confidently in FRONT?
+    answer: Signal heads are visible, but their controlling state is not clear enough to assert confidently.
+  - type: perception
+    question: What marking spans the road ahead in FRONT?
+    answer: White zebra crossing stripes span the road.
+  - type: perception
+    question: What limits visibility to the left of ego?
+    answer: The red truck blocks much of FRONT_LEFT.
+  - type: perception
+    question: What part of the truck is visible in BACK?
+    answer: The truck's chassis and rear wheels are visible alongside ego.
+  - type: prediction
+    question: What does ego do beside the truck and crossing over the next three seconds?
+    answer: Ego stays stopped for the next three seconds.
+  - type: prediction
+    question: If ego moves before checking the area hidden by the truck, what could go unnoticed?
+    answer: A road user in the obscured area could go unnoticed.
+  - type: prediction
+    question: If ego moves left while the truck remains alongside, what conflict could develop?
+    answer: Ego could hit the truck alongside it.
+  - type: planning
+    question: How should the truck blocking FRONT_LEFT affect departure checks?
+    answer: Check the obscured area before moving; the truck prevents confirming that it is clear.
+  - type: planning
+    question: What must ego establish about the signals before treating them as permission to proceed?
+    answer: Identify the controlling signal and its state; the visible heads alone do not establish permission.
+  - type: planning
+    question: Why should ego avoid waiting on the zebra crossing?
+    answer: Waiting on it could obstruct pedestrians using the crossing.
+  - type: planning
+    question: What should ego check before moving beside the large truck?
+    answer: Check that there is enough room beside the truck and that the crossing ahead is clear before moving.
+  - type: behaviour
+    question: Is ego stopped before or past the crossing?
+    answer: It is stopped before the crossing.
+- scene: Residential curve with a sidewalk pedestrian
+  source_run: run43
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run43_000165
+    sample_index: 4
+    key_frame_id: 165
+    action_label: RIGHT_TURN
+    past_action: FORWARD
+    trajectory_type: RIGHT_CURVE
+    v: 8.063
+    w: -0.225
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 4.03
+      - -0.19
+    - - 8.03
+      - -0.68
+    - - 11.99
+      - -1.44
+    - - 15.89
+      - -2.47
+    - - 19.71
+      - -3.75
+    - - 23.45
+      - -5.28
+  observations:
+    FRONT: Unmarked residential road bending right; pedestrian on the left sidewalk; trees and street lamps;
+      haze obscuring distant details.
+    FRONT_LEFT: Pedestrian beside stone buildings.
+    BACK: Road behind ego; no nearby vehicle clearly visible.
+  caption_short: Ego is turning right along a hazy residential street.
+  caption_detailed: FRONT shows an unmarked residential road bending right, with a pedestrian on the left
+    sidewalk. FRONT_LEFT also shows that pedestrian beside stone buildings. Trees and street lamps border
+    the road. BACK shows the road behind without a clearly visible nearby vehicle. Haze obscures distant
+    details.
+  qa_pairs:
+  - type: perception
+    question: Which way does the residential road bend in FRONT?
+    answer: It bends right.
+  - type: perception
+    question: Where is the pedestrian relative to the road in FRONT?
+    answer: The pedestrian is on the left sidewalk, outside the roadway.
+  - type: perception
+    question: What borders the residential road near the pedestrian?
+    answer: The pedestrian is on the left sidewalk beside stone buildings.
+  - type: perception
+    question: Are painted lane lines visible on the road in FRONT?
+    answer: No painted lane lines are visible on this stretch.
+  - type: perception
+    question: What reduces distant visibility on this street?
+    answer: Haze reduces distant visibility.
+  - type: perception
+    question: Is the sidewalk pedestrian also visible in FRONT_LEFT?
+    answer: Yes. The pedestrian is beside the stone buildings in FRONT_LEFT.
+  - type: prediction
+    question: How does ego drive along the residential street in the recording?
+    answer: Ego follows the right bend at about the same speed.
+  - type: prediction
+    question: If the pedestrian on the left steps into the roadway, what conflict could develop?
+    answer: The pedestrian could enter the space ego is approaching.
+  - type: prediction
+    question: If haze hides a vehicle farther around the bend, what could limit ego’s response?
+    answer: Late visibility could leave less time to slow or stop.
+  - type: planning
+    question: How should ego respond if the sidewalk pedestrian enters its path?
+    answer: Slow or stop as needed to yield and avoid entering the pedestrian’s path.
+  - type: planning
+    question: What should guide ego’s position on this unmarked bend?
+    answer: Use the visible road edges to follow the bend while leaving clearance from the sidewalk.
+  - type: planning
+    question: Why should ego allow a cautious approach around the hazy bend?
+    answer: The bend and haze limit the view of the road farther ahead.
+  - type: planning
+    question: What should ego check before reversing on this residential road?
+    answer: Check BACK for road users and clearance; the current absence of a clearly visible vehicle does
+      not guarantee a clear route.
+  - type: behaviour
+    question: Is ego following the road bend or crossing the road?
+    answer: It is following the right bend in the road.
+- scene: Braking toward a crossing while the current label remains FORWARD
+  source_run: run43
+  source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
+  ground_truth:
+    sample_id: run43_000345
+    sample_index: 10
+    key_frame_id: 345
+    action_label: FORWARD
+    past_action: FORWARD
+    trajectory_type: STRAIGHT
+    v: 6.393
+    w: -0.034
+    past_window_sec: 1.4
+    horizon_sec: 3.0
+    waypoint_period_sec: 0.5
+    future_waypoints_ego_frame:
+    - - 3.08
+      - -0.17
+    - - 5.94
+      - -0.43
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
+  observations:
+    FRONT: Crosswalk at an urban junction; red signal on a pole to the left; haze reducing distant visibility;
+      no nearby vehicles or pedestrians clearly visible.
+    FRONT_RIGHT: Green dumpster beside a building.
+    BACK: Residential approach road; no nearby vehicles or pedestrians clearly visible.
+  caption_short: Ego is slowing down as it approaches a crosswalk.
+  caption_detailed: FRONT shows a crosswalk at an urban junction and a red signal on a pole to the left.
+    Haze reduces distant visibility. No nearby vehicles or pedestrians are clearly visible in FRONT or
+    BACK. FRONT_RIGHT shows a green dumpster beside a building, and BACK shows the residential approach
+    road.
+  qa_pairs:
+  - type: perception
+    question: What road feature is directly ahead in FRONT?
+    answer: A crosswalk spans the road at a junction.
+  - type: perception
+    question: Are nearby pedestrians visible at the crossing in FRONT?
+    answer: No nearby pedestrians are clearly visible at that crossing.
+  - type: perception
+    question: What color is the signal on the left pole in FRONT?
+    answer: The signal on that pole is red.
+  - type: perception
+    question: What are the white stripes across the road in FRONT?
+    answer: They are crosswalk markings.
+  - type: perception
+    question: What reduces distant visibility ahead?
+    answer: Haze reduces distant visibility.
+  - type: perception
+    question: What does BACK show behind ego?
+    answer: The residential approach road is visible behind ego.
+  - type: prediction
+    question: What does ego do as it approaches the crossing in the recording?
+    answer: Ego slows down and stops within about 1.5 seconds.
+  - type: prediction
+    question: If ego maintains speed instead of slowing before this crossing, what could become harder?
+    answer: Stopping before a newly detected conflict or an applicable stop line could become harder.
+  - type: prediction
+    question: If a pedestrian enters the crossing from outside the current view, what conflict could develop?
+    answer: The pedestrian could step into the road in front of ego.
+  - type: planning
+    question: What should ego verify about the red signal on the left before proceeding?
+    answer: Verify whether it controls ego’s lane and obey it if applicable.
+  - type: planning
+    question: How should ego account for the crosswalk during its approach?
+    answer: Keep the crossing under observation and be prepared to yield if a pedestrian enters.
+  - type: planning
+    question: Why can’t the motion summary tell us exactly where ego stops near the crossing?
+    answer: It tells us how far ego travels, but not how far away the crossing is.
+  - type: planning
+    question: How should haze affect this junction approach?
+    answer: Choose an approach speed that leaves time to respond to road users becoming visible.
+  - type: behaviour
+    question: What is ego doing relative to the crossing now?
+    answer: It is still moving toward the crossing and will soon stop in the recording.
