@@ -35,13 +35,11 @@ def _args(**over):
 
 def test_shipped_config_loads():
     cfg = an.load_config(CONFIG)
-    assert cfg.inference.model == "auto"
-    assert cfg.inference.model_revision == (
-        "5cb35eb3dcbf52dbce5f87dbc64df6aaffadcace/Qwen3.6-27B-Q3_K_M.gguf")
+    assert cfg.inference.model == "qwen3.5-9b-q6_k"
     assert cfg.samples.run is None and cfg.samples.indices is None
     assert cfg.questions.counts.as_dict() == {
-        "perception": 6, "prediction": 4, "planning": 4, "behaviour": 4}
-    assert cfg.questions.counts.total == 18
+        "perception": 6, "prediction": 3, "planning": 4, "behaviour": 1}
+    assert cfg.questions.counts.total == 14
     assert cfg.inference.chat_template_kwargs["enable_thinking"] is False
     assert cfg.questions.enable_thinking is True
     assert cfg.questions.max_tokens == 8000
@@ -52,7 +50,7 @@ def test_smoke_config_spread_indices():
     assert smoke.samples.run == "run43"
     assert smoke.samples.indices == [4, 8, 12]
     assert min(smoke.samples.indices) >= 4
-    assert smoke.inference.model_revision == an.load_config(CONFIG).inference.model_revision
+    assert smoke.inference.model == an.load_config(CONFIG).inference.model
     assert smoke.questions.enable_thinking is True
     assert smoke.inference.chat_template_kwargs["enable_thinking"] is False
     assert smoke.questions.max_tokens == 8000
@@ -282,8 +280,8 @@ def test_prompts_format():
     counts = an.QaCounts()
     qs = an.QUESTION_WRITER_SYSTEM.format(n_total=counts.total, counts_text=counts.text())
     answers = an.ANNOTATOR_SYSTEM.format(n_total=counts.total, **LIMITS.model_dump())
-    assert "Write exactly 18 questions" in qs
+    assert "Write exactly 14 questions" in qs
     assert "{{" not in qs and "}}" not in qs
-    assert "(18 items)" in answers
+    assert "(14 items)" in answers
     assert "camera other than FRONT" in qs
     assert "visible dynamic agents" in answers

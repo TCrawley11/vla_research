@@ -163,52 +163,19 @@ or sign name (e.g. a traffic light pole), the analogue of the document's
 
 ### Motion labels (sample schema version 2)
 
-`build-samples` preserves raw telemetry and creates these derived datasets:
+`build-samples` writes causal labels from raw telemetry using
+`capture.motion_labels` in the capture YAML (`configs/base.yaml`). Those
+settings are stored on the run as `motion_label_config`. Rebuilds reuse them
+(or model defaults on legacy runs) and replace derived groups only.
 
-- `/motion/motion_state`: `(S,)` strings, `STATIONARY`, `CREEPING`, `MOVING`, or
-  `UNKNOWN`, evaluated causally at each key frame.
-- `/motion/smoothed_speed_mps`: `(S,)` float64 speed at the key frame.
-- `/motion/stationary_throughout`, `/motion/comes_to_stop`,
-  `/motion/starts_moving`: `(S,)` boolean flags over the inclusive key-to-horizon
-  interval. Stop and start are independently detected transitions, so both may
-  be true, including a stop followed by a restart. Stationary throughout means
-  the confirmed state stays stationary, allowing subthreshold jitter.
-- `/motion/events_valid`: `(S,)` boolean. If any state in the interval is
-  `UNKNOWN`, all event flags are false and this flag is false; do not interpret
-  unavailable flags as evidence that no event occurred.
-- `/motion_telemetry/motion_state` and `/motion_telemetry/smoothed_speed_mps`:
-  the corresponding `(N,)` raw-frame derived signals for inspection.
+- `/motion/motion_state`: `STATIONARY`, `CREEPING`, `MOVING`, or `UNKNOWN`
+- `/motion/smoothed_speed_mps`: filtered speed at the key frame
+- `/motion/stationary_throughout`, `comes_to_stop`, `starts_moving`: horizon flags
+- `/motion/events_valid`: false if any state in the interval is `UNKNOWN`
+- `/motion_telemetry/*`: the same signals on the raw-frame axis
 
-The filter is a trailing 7-frame median (0.2 s between the oldest and newest
-reading at 30 Hz). Warm-up uses the available readings. States start `UNKNOWN`.
-Invalid speed (negative or nonfinite) resets state and filter, as does a timestamp
-interval exceeding 1.5 times the run's median interval. Timestamps must be finite
-and strictly increasing. All confirmations use elapsed simulation time from the
-first qualifying filtered reading, without backdating:
-
-- Enter `STATIONARY` below 0.15 m/s for 0.5 s.
-- Leave `STATIONARY` above 0.35 m/s for 0.2 s, entering `CREEPING`.
-- Enter `CREEPING` from `MOVING` below 1.0 m/s for 0.3 s.
-- Enter `MOVING` above 1.5 m/s for 0.3 s.
-
-Between thresholds, retain the current state. Initial `CREEPING` requires 0.3 s between 0.15 and 1.5 m/s inclusive; initial `MOVING` requires
-its normal dwell. Stop confirmation takes priority outside `STATIONARY`.
-A stop must be confirmed by the horizon end to count. Events use all raw frames,
-not just the six waypoints. These defaults are provisional calibration values.
-
-The existing action IDs are preserved. `STOP` now requires confirmed
-`STATIONARY`; other action labels use smoothed speed and the existing yaw-rate
-threshold. `CREEPING` is independent of turn direction and of `SLOW_FORWARD`
-(which retains its 3 m/s boundary). Unknown state gives `UNKNOWN` action.
-`trajectory_type` now describes geometry only: `STRAIGHT`, `LEFT_CURVE`, or
-`RIGHT_CURVE`. It no longer emits displacement-based `STOPPING`; older files
-may still contain that value. A stationary path is geometrically `STRAIGHT`.
-
-Configure defaults under `capture.motion_labels` in the existing capture YAML
-(`configs/base.yaml`). Capture records them as the root JSON attribute
-`motion_label_config`. Rebuilding uses those recorded settings, or model
-defaults for legacy runs. The `/motion` attributes `config_json` and
-`labeler_version` record the exact settings and algorithm version (2). Root
-`sample_schema_version=2` versions the derived layout independently of the raw
-capture schema. The sidecar records the same settings and versions. Rebuilding
-replaces derived groups only.
+Default filter is a trailing 7-frame median. Confirmations, without backdating:
+stationary below 0.15 m/s for 0.5 s, leave above 0.35 m/s for 0.2 s,
+creeping from moving below 1.0 m/s for 0.3 s, moving above 1.5 m/s for 0.3 s.
+`STOP` requires confirmed `STATIONARY`. `trajectory_type` is geometry only
+(`STRAIGHT` / `LEFT_CURVE` / `RIGHT_CURVE`).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Serve the configured quantized Qwen 27B + mmproj for carla_data_pipeline.annotate.
+# Serve Qwen3.5-9B Q6_K + mmproj for carla_data_pipeline.annotate.
 #
 # Qwen3.5 GGUF is architecture `qwen35` (hybrid GDN). The generic vLLM-GGUF
 # mapper (historically weights_adapter/default.py, now transformers.py) cannot
@@ -18,15 +18,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -z "${BACKBONE:-}" || -z "${MODEL_REPO:-}" || -z "${TOKENIZER:-}" || -z "${SERVED_NAME:-}" ]]; then
-  echo "Set MODEL_REPO, BACKBONE, TOKENIZER and SERVED_NAME to your quantized 27B model." >&2
-  echo "The annotation client also supports an already-running OpenAI-compatible endpoint." >&2
-  exit 2
-fi
 MODEL_DIR="${MODEL_DIR:-models}"
+MODEL_REPO="${MODEL_REPO:-unsloth/Qwen3.5-9B-GGUF}"
+BACKBONE="${BACKBONE:-Qwen3.5-9B-Q6_K.gguf}"
 MMPROJ="${MMPROJ:-mmproj-BF16.gguf}"
+TOKENIZER="${TOKENIZER:-Qwen/Qwen3.5-9B}"
+SERVED_NAME="${SERVED_NAME:-qwen3.5-9b-q6_k}"
 PORT="${PORT:-8001}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 GPU_MEM="${GPU_MEM:-0.85}"
 # Git pin that registers Qwen35GGUFAdapter (weights_adapter/qwen3_5.py).

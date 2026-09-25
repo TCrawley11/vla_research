@@ -47,8 +47,8 @@ author (`questions.model`) writes one question set once; every candidate
 answers exactly that set, so answers compare one-to-one across models.
 
 ```sh
-OPENROUTER_API_KEY=... uv run python scripts/annotate_benchmark.py   # --h5 <local run> to skip the download
-uv run python scripts/build_inspection.py                             # -> data/annotation_test/inspection.html
+OPENROUTER_API_KEY=... uv run python scripts/openrouter_bench.py   # --h5 <local run> to skip the download
+uv run python scripts/build_inspection.py                          # -> data/annotation_test/inspection.html
 ```
 
 `collect --dry-run` validates and prints the resolved config without CARLA;
@@ -60,18 +60,16 @@ python -m carla_data_pipeline man
 python -m carla_data_pipeline man config
 ```
 
-## Local annotation (quantized 27B)
+## Local annotation (Qwen3.5-9B Q6_K)
 
-Six-camera samples from the team HF dataset, annotated by a local
-OpenAI-compatible server. Question writing and answering use the same model.
-The current local launcher uses the cached Qwen3.6-27B Q3_K_M and its BF16
-vision projector through llama.cpp. It pins the cached model revision and
-does not download weights. Set `LLAMA_SERVER`, `MODEL`, and `MMPROJ` to use
-other executable or weight paths. A compatible vLLM endpoint also works;
-`serve_annotator.sh` requires explicit model, tokenizer, and serving settings.
+Six-camera samples from the team HF dataset, annotated by a local vLLM
+server. Question writing and answering use the same GGUF. Qwen3.5 needs the
+git-pinned `vllm-gguf-plugin` (its generic GGUF mapper cannot load Qwen's
+hybrid GDN weights) and `mmproj-BF16.gguf` beside the backbone.
 
 ```sh
-scripts/serve_annotator_llama.sh    # leave running in another terminal
+uv sync --group infer
+scripts/serve_annotator.sh          # downloads GGUFs into models/ if missing
 python -m carla_data_pipeline annotate
 python -m carla_data_pipeline annotate --h5 data/runs/run43.h5 --limit 1
 uv run python scripts/build_inspection.py --dir data/annotations
@@ -128,3 +126,15 @@ variant has its own `inspection.html` with all six camera frames. Review front
 objects, unsupported claims, repetitive questions, and ground-truth copying
 against the images before scaling up. A successful schema check alone does
 not establish annotation quality.
+
+
+Annotation question coverage uses 14 pairs by default: six perception, three
+prediction, four planning, and one behaviour. Topics are selected from the scene
+rather than mandatory slots. Perception covers visible evidence and relationships;
+prediction distinguishes recorded future ego motion from explicitly conditional
+outcomes; planning asks for evidence-based decisions and checks; behaviour describes
+present or recent ego motion. Each QA is standalone, with no reasoning traces or
+links between questions. Hypothetical actor movements are not observed events, and
+recorded driving is not treated as proof that a maneuver is safe. The `purpose`
+field records the category's broad intent, not a semantic label inferred from
+question position. Configured counts remain adjustable.

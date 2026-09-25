@@ -10,7 +10,7 @@ import pytest
 
 from carla_data_pipeline import annotate as local
 from carla_data_pipeline import annotate as common
-from carla_data_pipeline import benchmark as hosted
+from scripts import openrouter_bench as hosted
 from scripts import prepare_annotation_eval as preparation
 from scripts import run_local_annotation_eval as evaluation
 
@@ -119,7 +119,7 @@ def test_natural_camera_names_and_agent_absence_are_recognized():
 def test_causal_planning_question_is_a_review_flag_only():
     questions = [{
         'id': 'q01', 'type': 'planning',
-        'question': 'What visible feature justifies accelerating?',
+        'question': 'Why did the recorded driver accelerate?',
     }]
     assert common._causal_question_errors(questions)
     assert common.validate_questions(
@@ -218,8 +218,8 @@ def test_both_stages_use_examples_and_recover_caches(tmp_path, kind):
     assert questions['question_prompt_id'] != common.QUESTION_WRITER_PROMPT_ID
     assert questions['examples']['scenes']
     assert 'linear_velocity_target' not in result['annotation']['action']
-    assert len(result['annotation']['qa_pairs']) == 18
-    assert len({q['purpose'] for q in result['annotation']['qa_pairs']}) == 18
+    assert len(result['annotation']['qa_pairs']) == 14
+    assert {q['purpose'] for q in result['annotation']['qa_pairs']} == set(common.QUESTION_PURPOSES.values())
 
 
 def test_hosted_disabled_examples_are_absent_from_prompts_and_provenance(tmp_path):
@@ -420,3 +420,118 @@ def test_local_stage_failure_preserves_recovery(tmp_path, failed_stage):
     worker.process_payload(p, tmp_path / 'frames')
     qs = worker.load_question_set(worker.question_path(p.gt.sample_id), p)
     assert worker.result_is_current(worker.result_path(p.gt.sample_id), qs, p)
+
+
+def test_confirmed_motion_overrides_instantaneous_speed():
+    for state in ('STATIONARY', 'CREEPING', 'MOVING', 'UNKNOWN'):
+        gt = payload().gt.model_copy(update={'v': .2, 'confirmed_motion_state': state})
+        assert gt.action_block()['motion_state'] == state.lower()
+        assert gt.action_block()['motion_state_source'] == 'temporal'
+        assert f'{state.lower()} (temporal label)' in gt.prompt_block()
+        assert common.GroundTruth.model_validate(gt.record()).confirmed_motion_state == state
+    assert common.motion_state(.1) == 'stationary'
+    assert common.motion_state(.8) == 'creeping'
+    assert common.motion_state(2.) == 'moving'
+    assert 'instantaneous estimate' in payload().gt.prompt_block()
+
+
+def test_negative_zero_is_not_rendered():
+    gt = payload().gt.model_copy(update={'v': 1e-7, 'w': -1e-13})
+    assert '-0.000' not in gt.prompt_block()
+    assert '0.000 rad/s' in gt.prompt_block()
+    assert str(gt.action_block()['angular_velocity_current']) == '0.0'
+    assert gt.record()['w'] == -1e-13  # raw provenance remains precise
+
+
+@pytest.mark.parametrize('stored', [False, True])
+def test_h5_motion_state_is_loaded_or_reconstructed(tmp_path, stored):
+    import h5py
+    path = tmp_path / 'motion.h5'
+    with h5py.File(path, 'w') as f:
+        f.attrs.update(raw_fps=30, horizon_sec=3., waypoint_period_sec=.5)
+        speed = np.zeros(100)
+        speed[60] = .2  # raw speed alone would not establish stationary state
+        tel = f.create_dataset('telemetry/data', data=np.column_stack([
+            np.arange(100) / 30, speed, np.zeros(100)]))
+        tel.attrs['columns'] = ['sim_time', 'v', 'w']
+        si = f.create_group('sample_index')
+        si['key_index'] = [60]
+        si['key_frame_id'] = [60]
+        si['sample_id'] = [b'run_000060']
+        si['clip_frame_indices'] = [[30, 45, 60, 75, 90]]
+        f['trajectory/trajectory_type'] = [b'STRAIGHT']
+        f['trajectory/future_waypoints_ego_frame'] = np.zeros((1, 6, 2))
+        for cam in common.CAMERAS:
+            f[f'images/{cam}'] = np.zeros((100, 1, 1, 3), dtype=np.uint8)
+        if stored:
+            # A saved state is authoritative, even where speed alone differs.
+            f['motion/motion_state'] = [b'CREEPING']
+            f['motion_telemetry/motion_state'] = np.full(100, b'CREEPING')
+            f['motion_telemetry/smoothed_speed_mps'] = np.full(100, .2)
+    with h5py.File(path, 'r') as f:
+        gt = common.load_sample(f, 0, 64).gt
+        assert gt.confirmed_motion_state == ('CREEPING' if stored else 'STATIONARY')
+        assert gt.action_label == ('SLOW_FORWARD' if stored else 'STOP')
+        assert gt.past_action == gt.action_label
+        assert gt.v == .2
+        assert ('motion' in f) == stored  # legacy reconstruction is read-only
+
+
+def test_example_notes_do_not_copy_captions_and_are_camera_scoped():
+    pool = common.load_examples(common.ExamplesConfig(
+        path=ROOT / 'configs/annotation/examples.yaml'), common.LimitsConfig())
+    for ex in pool:
+        assert len(ex.observations) > 1
+        for camera, note in ex.observations.items():
+            assert note != ex.caption_detailed
+            assert not any(other in note for other in common.CAMERAS if other != camera)
+
+
+def test_example_caption_copy_is_rejected(tmp_path):
+    import yaml
+    ex = example().model_dump(mode='json')
+    ex['observations'] = {'FRONT': ex['caption_detailed']}
+    path = tmp_path / 'examples.yaml'
+    path.write_text(yaml.safe_dump([ex]))
+    with pytest.raises(SystemExit, match='must not duplicate'):
+        common.load_examples(common.ExamplesConfig(path=path), common.LimitsConfig())
+
+
+@pytest.mark.parametrize('question', [
+    'Why should ego check the area hidden by the truck before moving?',
+    'What visible feature supports a cautious approach to the bend?',
+    'If the pedestrian enters the road, how should ego respond?',
+])
+def test_grounded_planning_is_not_flagged_as_unobserved_cause(question):
+    assert common._causal_question_errors([
+        {'id': 'q01', 'type': 'planning', 'question': question}]) == []
+
+
+def test_scene_selected_perception_does_not_require_signal_slot():
+    questions = [
+        {'id': 'q01', 'type': 'perception', 'question': 'Which way does the highway bend in FRONT?'},
+        {'id': 'q02', 'type': 'perception', 'question': 'What bounds the roadway on the right in FRONT?'},
+        {'id': 'q03', 'type': 'perception', 'question': 'What reduces distant visibility in FRONT?'},
+    ]
+    assert not any('slot' in issue for issue in common.quality_issues(example().output(), questions))
+
+
+def test_question_purpose_does_not_invent_positional_semantics():
+    questions = [
+        {'type': 'perception', 'question': 'What blocks the left view?'},
+        {'type': 'perception', 'question': 'Which way does the road bend?'},
+    ]
+    for order in (questions, questions[::-1]):
+        result = common.purpose_questions(order)
+        assert all(q['purpose'] == 'visual_observation' for q in result)
+        assert [q['question'] for q in result] == [q['question'] for q in order]
+
+
+def test_revised_examples_have_distinct_supported_question_coverage():
+    pool = common.load_examples(common.ExamplesConfig(), common.LimitsConfig())
+    for ex in pool:
+        predictions = [q for q in ex.qa_pairs if q.type == 'prediction']
+        assert len(ex.qa_pairs) == 14
+        assert sum(q.question.startswith('If ') for q in predictions) == 2
+        assert not any('This does not establish constant speed' in q.answer for q in ex.qa_pairs)
+        assert not common.quality_issues(ex.output(), ex.questions())

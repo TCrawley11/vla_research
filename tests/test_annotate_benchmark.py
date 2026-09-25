@@ -1,5 +1,5 @@
 """Config, prompt, ground-truth and validator checks for
-scripts/annotate_benchmark.py (no network)."""
+scripts/openrouter_bench.py (no network)."""
 import json
 from pathlib import Path
 
@@ -8,7 +8,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from carla_data_pipeline import benchmark as ab
+from scripts import openrouter_bench as ab
 from carla_data_pipeline import annotate as annotation
 
 REPO = Path(__file__).resolve().parents[1]
@@ -37,9 +37,9 @@ def _bench(cfg=None):
 def test_shipped_config_loads():
     cfg = ab.load_config(CONFIG)
     assert cfg.questions.model == "qwen/qwen3.5-397b-a17b"
-    assert cfg.questions.counts.as_dict() == {"perception": 6, "prediction": 4,
-                                              "planning": 4, "behaviour": 4}
-    assert cfg.questions.counts.total == 18
+    assert cfg.questions.counts.as_dict() == {"perception": 6, "prediction": 3,
+                                              "planning": 4, "behaviour": 1}
+    assert cfg.questions.counts.total == 14
     assert cfg.questions.model not in cfg.models, "question author must not be a candidate"
     assert len(cfg.models) >= 2
 
@@ -167,13 +167,13 @@ def test_prompts_format_for_both_stages():
     counts = annotation.QaCounts()
     qs = annotation.QUESTION_WRITER_SYSTEM.format(n_total=counts.total, counts_text=counts.text())
     answers = annotation.ANNOTATOR_SYSTEM.format(n_total=counts.total, **LIMITS.model_dump())
-    assert "Write exactly 18 questions, 6 perception, 4 prediction, 4 planning, 4 behaviour" in qs
+    assert "Write exactly 14 questions, 6 perception, 3 prediction, 4 planning, 1 behaviour" in qs
     assert "Write the question set for one sample" in qs
     assert "Write questions only, never answers" in qs
     assert "never presuppose objects" in qs.lower()
     assert "camera other than FRONT" in qs
     assert "steer-and-hold" in qs
-    assert "(18 items)" in answers
+    assert "(14 items)" in answers
     assert "30 words each" in answers and "30-70 words" in answers
     assert "visible dynamic agents" in answers
     assert '{"questions": [{"type": ..., "question": ...}, ...]}' in qs
@@ -209,7 +209,7 @@ def test_no_own_mode_surface():
     Removed 2026-08-18; this guards against the single-pass "model writes
     its own questions and answers" path coming back under any name."""
     leaked = [n for n in dir(ab) if "own" in n.lower() and "download" not in n.lower()]
-    assert leaked == [], f"own-mode symbols back in annotate_benchmark: {leaked}"
+    assert leaked == [], f"own-mode symbols back in openrouter_bench: {leaked}"
     for cls in (ab.QuestionsConfig, ab.BenchmarkConfig):
         assert "mode" not in cls.model_fields, f"{cls.__name__} grew a mode switch"
     with pytest.raises(ValidationError, match="extra"):

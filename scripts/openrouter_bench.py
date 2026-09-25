@@ -22,8 +22,8 @@ files it affects. Re-running annotates only the missing or stale pairs. Not
 the production annotate stage.
 
 Usage:
-  OPENROUTER_API_KEY=... uv run python scripts/annotate_benchmark.py
-  uv run python scripts/annotate_benchmark.py --config configs/annotation/benchmark.yaml \
+  OPENROUTER_API_KEY=... uv run python scripts/openrouter_bench.py
+  uv run python scripts/openrouter_bench.py --config configs/annotation/benchmark.yaml \
       --h5 data/runs/run43.h5 --models qwen/qwen3.8-27b
   uv run python scripts/build_inspection.py      # side-by-side HTML of the results
 """
@@ -44,7 +44,8 @@ import yaml
 from huggingface_hub import HfApi, hf_hub_download
 from pydantic import Field, field_validator, model_validator
 
-from . import annotate as ann
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from carla_data_pipeline import annotate as ann
 
 DEFAULT_CONFIG = Path("configs/annotation/benchmark.yaml")
 DEFAULT_REPO_ID = "VLA-uwo-2026/six_cam_1600x900"

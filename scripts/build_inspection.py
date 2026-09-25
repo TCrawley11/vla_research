@@ -1,7 +1,7 @@
 """Build <out_dir>/inspection.html: key frames next to each model's captions
 and QA so annotations can be eyeballed against the images.
 
-Reads the team-schema result files written by annotate_benchmark.py
+Reads the team-schema result files written by openrouter_bench.py
 (<sample_id>__<model>.json) plus the frames/ directory of key-frame JPEGs.
 When every model on a sample answered the same question set (the benchmark's
 normal shape) the answers are laid out one question per row, one column per

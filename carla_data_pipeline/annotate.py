@@ -7,9 +7,9 @@ answers it. Output is enforced with `response_format` json_schema, code-side
 validators, and retries with feedback.
 
 Owns the production prompts, schemas, validation and sample loading. The hosted
-benchmark imports this module; production never depends on benchmark code.
+OpenRouter bench imports this module; production never depends on bench code.
 
-Serve the model first (`scripts/serve_annotator_llama.sh`); this module is a client.
+Serve the model first (`scripts/serve_annotator.sh`); this module is a client.
 
 Usage:
   python -m carla_data_pipeline annotate
@@ -50,6 +50,8 @@ from pydantic import (BaseModel, ConfigDict, Field, FiniteFloat,
                       field_validator, model_validator)
 
 from .build_samples import action_label_from_velocity
+from .config_utils.schema import MotionLabelConfig
+from .motion import motion_states
 
 CAMERAS = ["FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"]
 QaType = Literal["perception", "prediction", "planning", "behaviour"]
@@ -95,9 +97,9 @@ class LimitsConfig(StrictModel):
 
 class QaCounts(StrictModel):
     perception: int = Field(6, ge=0)
-    prediction: int = Field(4, ge=0)
+    prediction: int = Field(3, ge=0)
     planning: int = Field(4, ge=0)
-    behaviour: int = Field(4, ge=0)
+    behaviour: int = Field(1, ge=0)
 
     @model_validator(mode="after")
     def _some_questions(self):
@@ -116,13 +118,12 @@ class QaCounts(StrictModel):
         return ", ".join(f"{n} {t}" for t, n in self.as_dict().items() if n)
 
 
-# Order is significant: writers produce each type's questions in this order.
+# Category-level provenance only: question position does not imply a fixed purpose.
 QUESTION_PURPOSES = {
-    "perception": ["road_layout", "road_users", "signals_signs", "markings",
-                   "visibility_surface", "another_view"],
-    "prediction": ["path", "speed_change", "stop_or_move", "path_scene_relation"],
-    "planning": ["maneuver", "speed_timing", "monitor", "scene_constraint"],
-    "behaviour": ["motion_state", "rotation", "recent_change", "scene_relation"],
+    "perception": "visual_observation",
+    "prediction": "future_or_conditional_outcome",
+    "planning": "driving_decision",
+    "behaviour": "current_or_recent_motion",
 }
 
 QUESTION_WRITER_SYSTEM = """\
@@ -130,50 +131,40 @@ Write the question set for one sample of a CARLA driving dataset.
 Write questions only, never answers. Use the six camera images and the
 recorded motion. Write exactly {n_total} questions, {counts_text}.
 
-Keep the task easy for a quantized 27B model: one short question, one purpose,
-one simple observation or comparison. Prefer fewer than 22 words. Use ordinary
-words. Avoid multi-part questions, calculations, exact object counts, steering
-angles, hidden intent, and long explanations. Never presuppose objects that
-are not there. A question may establish a relevant object's absence.
+Use one short, standalone question for each distinct information need. Prefer
+fewer than 22 words. Never presuppose objects that are not there. Avoid exact
+counts, calculations, object IDs, hidden intentions and multipart questions.
+Do not create reasoning traces, linked question chains, or references to other
+questions. Each question must be independently answerable from the inputs.
 
-Write each type in the following purpose order. Use the first N purposes if
-fewer questions of that type are requested. For additional slots, ask about a
-new visible detail, never paraphrase an earlier question.
-perception (6):
-  1. Road layout: straight road, bend, or junction.
-  2. Other road users: identify or locate a visible agent, or establish absence.
-  3. Traffic lights/signs: ask about one visible signal/sign, or absence.
-  4. Road markings: identify a marking or describe an unmarked road.
-  5. Visibility or road surface: choose one detail that matters here.
-  6. Another view: name a camera other than FRONT and ask about a useful detail.
-prediction (4), about the RECORDED future, not guesses:
-  1. Path: which way the recorded path goes relative to the visible road.
-  2. Speed change: whether the vehicle slows, speeds up, or holds speed here.
-  3. Stop or move: whether it stops, stays stopped, or starts moving in the horizon.
-  4. Path/scene relation: one simple relation to a visible bend, junction, or marking.
-     Do not claim a precise crossing position without supporting geometry.
-planning (4):
-  1. Maneuver: the next movement consistent with the recorded future path.
-  2. Speed/timing: one speed adjustment or waiting condition.
-  3. Monitor: one visible feature or road user to watch.
-  4. Scene constraint: how visible road geometry, a boundary, or an obstacle
-     relates to the maneuver. Never ask what causes, explains, justifies,
-     supports, permits, or allows the recorded action.
-behaviour (4), about the PRESENT and recorded PAST:
-  1. Motion state: stopped, creeping, or moving.
-  2. Rotation: turning left/right or approximately straight, related to the scene.
-  3. Recent change: compare the past dominant action with the current motion.
-     A dominant label is not proof of constant speed or intent.
-  4. Scene relation: describe the current movement relative to a visible road feature.
+Choose coverage from the actual scene, not a fixed list of slots:
+- perception: relevant road users, spatial relationships, road boundaries,
+  crossings, signals, occlusion, or visibility. Use a camera other than FRONT
+  when it supplies useful evidence. Do not force a signal-absence question on
+  an empty highway or repeat the same feature under different wording.
+- prediction: describe recorded future ego motion, or ask about a clearly
+  conditional outcome involving a visible feature or road user. Usually one
+  recorded-motion summary is enough. Start hypothetical questions with "If"
+  and state the assumption. Do not present another agent's future movement,
+  hidden presence, intent, or a signal change as known. When a conditional
+  interaction is not supported, use a distinct road/visibility consequence.
+- planning: ask what decision, check, priority, or adjustment a visible
+  constraint calls for. Short evidence-based explanations are welcome. A
+  question about recorded speed or stop time alone belongs under prediction.
+  Distinguish what ego SHOULD do from why the recorded driver actually acted.
+  Do not presume a signal controls ego's lane or a visual feature caused a stop.
+- behaviour: one concise summary of current or recent ego motion in this scene
+  is normally enough. Use supplied temporal state when available. If more are
+  requested, ask distinct comparisons, not repeated state/rotation/label lookups.
 
-The purposes may share evidence but must ask for different information.
-Do not repeat a question across types. Avoid repeated steer-and-hold instructions.
-Prefer qualitative answers tied to this scene. At most one plain numeric or
-label lookup per type. Never ask for unknown future angular velocity, future
-signal changes, or the driver's intentions. Current action labels describe
-current motion, not commands. FORWARD can coexist with braking to a stop.
-Do not assume a crosswalk alone caused a stop. Name a camera for view-specific
-questions. Treat all six cameras equally; none has priority.
+Prefer relevant scene relationships over metadata lookups. Avoid repeated
+steer-and-hold instructions. Do not repeat an answerable fact across types;
+three questions that all answer "ego stays stopped" are redundant. Do not ask
+for collision probabilities or numerical risk without supporting measurements.
+Current labels describe motion, not commands. Recorded behavior is not proof
+of safety. Name cameras for view-specific questions, without giving FRONT
+priority. Absence and uncertainty questions are useful only when they affect
+understanding or a decision in this particular scene.
 
 Output only this JSON object, exactly {n_total} items:
 {{"questions": [{{"type": ..., "question": ...}}, ...]}}
@@ -191,13 +182,19 @@ Evidence rules:
   of present motion, NOT commands or proof of intention.
 - The recorded trajectory establishes future ego motion. Its speeds and stop
   times are approximate values derived from spaced waypoints. A current FORWARD
-  label can accompany braking. A STOP label can accompany slow creeping.
+  label can accompany braking. Prefer the supplied temporal motion state;
+  legacy labels and instantaneous estimates may differ.
 - Copy supplied numbers with their units and time scope. Do not infer future
   angular velocity from current angular velocity. Do not calculate missing values.
-- Planning should follow the recorded future and visible evidence. State a
-  mismatch or unknown cause instead of forcing agreement. A crosswalk alone
-  does not establish the reason for a stop. A green side-facing signal need
-  not control the ego lane. Do not guess which lane a signal controls.
+- Planning recommends decisions supported by visible constraints and ordinary
+  driving rules. A brief evidence-based reason is welcome. Do not treat the
+  recorded future as a safety recommendation or claim to know the driver's
+  actual reason. A crosswalk alone does not establish why a stop occurred.
+  A side-facing signal need not control ego's lane; do not guess its assignment.
+- Conditional questions describe hypothetical outcomes. Preserve the assumption
+  in the answer; use "could" or "may" for possible conflicts. Never turn a
+  hypothetical pedestrian or maneuver into an observed fact. Do not invent
+  collision probabilities, exact risk, or other-agent future trajectories.
 - Do not invent objects, exact counts, steering angles, acceleration, intentions,
   or future signal changes. Say briefly when an answer is not determinable.
 - Distinguish observation from advice: "watch for pedestrians" does not assert
@@ -208,6 +205,8 @@ Evidence rules:
   or following distance changes from a single image.
 
 Style: direct answers, one or two sentences, at most {answer_max_words} words each.
+No reasoning traces, linked answers, or step-by-step explanations. Avoid boilerplate
+about dataset limitations unless it directly answers the question.
 No preamble or restating the question. caption_short: one sentence, at most
 {caption_short_max_words} words. caption_detailed: 2-4 sentences,
 {caption_detailed_min_words}-{caption_detailed_max_words} words.
@@ -224,6 +223,7 @@ Output only this JSON object:
 USER_GT = """\
 Recorded motion for this frame:
 - current action label (coarse motion class, not a command): {action_label}
+- current motion state: {motion_state} ({motion_state_source})
 - current ego speed: {v:.2f} m/s
 - current ego angular velocity: {w:.3f} rad/s (positive = left turn)
 - dominant action over the past {past_window_sec:.1f} s: {past_action}
@@ -255,10 +255,23 @@ def trajectory_speeds(waypoints: np.ndarray, period_sec: float) -> np.ndarray:
     return np.linalg.norm(np.diff(pts, axis=0), axis=1) / period_sec
 
 
-def motion_state(v: float) -> str:
-    if abs(v) < STATIONARY_MPS:
+MotionState = Literal["STATIONARY", "CREEPING", "MOVING", "UNKNOWN"]
+
+
+def motion_state(v: float, confirmed: MotionState | None = None) -> str:
+    """Prefer the temporal label, including UNKNOWN, over instantaneous speed.
+
+    Frozen legacy examples lack history. Their fallback is an explicitly marked
+    estimate using the default entry thresholds, not a confirmed stop decision.
+    """
+    if confirmed is not None:
+        return confirmed.lower()
+    if not np.isfinite(v) or v < 0:
+        return "unknown"
+    defaults = MotionLabelConfig()
+    if v < defaults.stationary_enter_mps:
         return "stationary"
-    return "creeping" if abs(v) < CREEPING_MPS else "moving"
+    return "creeping" if v <= defaults.moving_enter_mps else "moving"
 
 
 def speed_profile(waypoints: np.ndarray, period_sec: float) -> str:
@@ -326,6 +339,7 @@ class GroundTruth(StrictModel):
     trajectory_type: TrajectoryType
     v: FiniteFloat
     w: FiniteFloat
+    confirmed_motion_state: MotionState | None = None
     past_window_sec: FiniteFloat = Field(gt=0)
     horizon_sec: FiniteFloat = Field(gt=0)
     waypoint_period_sec: FiniteFloat = Field(gt=0)
@@ -351,20 +365,25 @@ class GroundTruth(StrictModel):
     def prompt_block(self) -> str:
         return USER_GT.format(
             action_label=self.action_label, action_text=self.action_text,
-            v=self.v, w=self.w,
+            v=round(self.v, 2) or 0.0, w=round(self.w, 3) or 0.0,
+            motion_state=motion_state(self.v, self.confirmed_motion_state),
+            motion_state_source=("temporal label" if self.confirmed_motion_state is not None
+                                 else "instantaneous estimate; history unavailable"),
             past_window_sec=self.past_window_sec, past_action=self.past_action,
             horizon_sec=self.horizon_sec, traj_summary=self.traj_summary())
 
     def action_block(self) -> dict:
         """Version 2: observed velocities, never mislabelled as control targets."""
         return {"action_label": self.action_label,
-                "motion_state": motion_state(self.v),
-                "linear_velocity_current": round(self.v, 2),
-                "angular_velocity_current": round(self.w, 3),
+                "motion_state": motion_state(self.v, self.confirmed_motion_state),
+                "motion_state_source": ("temporal" if self.confirmed_motion_state is not None
+                                        else "instantaneous_estimate"),
+                "linear_velocity_current": round(self.v, 2) or 0.0,
+                "angular_velocity_current": round(self.w, 3) or 0.0,
                 "future_motion": self.traj_summary()}
 
     def record(self) -> dict:
-        return self.model_dump(mode="json")
+        return self.model_dump(mode="json", exclude_none=True)
 
 
 # --------------------------------------------------------------------------
@@ -397,7 +416,7 @@ def load_sample(f: h5py.File, sample: int, image_width: int) -> SamplePayload:
     cols = [c.decode() if isinstance(c, bytes) else c
             for c in f["telemetry/data"].attrs["columns"]]
     tel = {c: f["telemetry/data"][:, i] for i, c in enumerate(cols)
-           if c in {"v", "w"}}
+           if c in {"v", "w", "sim_time"}}
 
     def as_str(x):
         return x.decode() if isinstance(x, bytes) else str(x)
@@ -405,19 +424,27 @@ def load_sample(f: h5py.File, sample: int, image_width: int) -> SamplePayload:
     clip = si["clip_frame_indices"][sample]
     if "motion_telemetry" in f:
         mt = f["motion_telemetry"]
-        labels = [action_label_from_velocity(
-            float(mt["smoothed_speed_mps"][i]), float(tel["w"][i]),
-            motion_state=as_str(mt["motion_state"][i])) for i in past_indices(clip)]
+        speeds = mt["smoothed_speed_mps"][:key + 1]
+        states = mt["motion_state"].asstr()[:key + 1]
     else:
-        labels = [action_label_from_velocity(float(tel["v"][i]), float(tel["w"][i]))
-                  for i in past_indices(clip)]
-    clip_sec = float(f.attrs.get("clip_sec", 3.0))
+        # Reconstruct history for old HDF5 runs without altering their contents.
+        config = MotionLabelConfig.model_validate_json(
+            f.attrs.get("motion_label_config", "{}"))
+        speeds, states = motion_states(tel["v"][:key + 1], tel["sim_time"][:key + 1], config)
+    confirmed_state = (as_str(f["motion/motion_state"][sample])
+                       if "motion/motion_state" in f else str(states[key]))
+    labels = [action_label_from_velocity(
+        float(speeds[i]), float(tel["w"][i]), motion_state=str(states[i]))
+        for i in past_indices(clip)]
+    current_action = action_label_from_velocity(
+        float(speeds[key]), float(tel["w"][key]), motion_state=confirmed_state)
 
     gt = GroundTruth(
         sample_id=as_str(si["sample_id"][sample]),
         sample_index=sample,
         key_frame_id=int(si["key_frame_id"][sample]),
-        action_label=as_str(f["action/action_label"][sample]),
+        action_label=current_action,
+        confirmed_motion_state=confirmed_state,
         past_action=Counter(labels).most_common(1)[0][0],
         trajectory_type=as_str(f["trajectory/trajectory_type"][sample]),
         v=float(tel["v"][key]), w=float(tel["w"][key]),
@@ -469,8 +496,9 @@ _STEER_RE = re.compile(r"\b(?:steer|steering|turn|turning|continue|continuing)\b
 _HOLD_RE = re.compile(r"\b(?:hold|holding|maintain|maintaining|speed)\b", re.I)
 _STRIP_NUM_RE = re.compile(r"\d+(?:\.\d+)?(?:\s*(?:m/s|rad/s|m|s))?", re.I)
 _CAUSAL_QUESTION_RE = re.compile(
-    r"\b(?:what|which)\b[^?]{0,100}\b(?:causes?|explains?|justifies?|"
-    r"supports?|permits?|allows?)\b|\bwhy should\b", re.I)
+    r"\bwhy did\b|\b(?:caused|made|motivated)\b.{0,60}\b(?:ego|driver|vehicle)\b|"
+    r"\b(?:cause|reason)\b.{0,60}\b(?:recorded|actual)\b|"
+    r"\b(?:recorded|actual)\b.{0,60}\b(?:cause|reason)\b", re.I)
 _LOOKUP_PATTERNS: dict[str, list[re.Pattern]] = {
     "behaviour": [
         re.compile(r"\b(?:current\s+)?(?:speed|velocity|forward velocity|"
@@ -773,7 +801,6 @@ def quality_issues(obj: dict, questions: list[dict]) -> list[str]:
     """Transparent review flags, not accuracy scores or automatic rejections."""
     issues = _caption_content_errors(obj)
     issues += _contradiction_errors(obj, obj.get("answers", []), questions)
-    issues += _perception_slot_errors(questions, Counter(q["type"] for q in questions))
     issues += _lookup_cap_errors(questions)
     issues += _planning_paraphrase_errors(questions)
     issues += _causal_question_errors(questions)
@@ -864,7 +891,8 @@ class ExampleAnnotation(StrictModel):
     source_run: str = Field(min_length=1)
     source_revision: str = Field(min_length=1)
     ground_truth: GroundTruth
-    observations: dict[str, str] = Field(min_length=1)
+    observations: dict[str, str] = Field(
+        min_length=1, description="Concise visual evidence per camera, distinct from output captions.")
     caption_short: str
     caption_detailed: str
     qa_pairs: list[ExampleQa] = Field(min_length=1)
@@ -895,6 +923,10 @@ def load_examples(cfg: ExamplesConfig, limits: LimitsConfig) -> list[ExampleAnno
     for i, ex in enumerate(pool):
         ids = [q["id"] for q in ex.questions()]
         errors = validate_answers(ex.output(), ids, limits, ex.questions(), ex.ground_truth)
+        if any(not note.strip() for note in ex.observations.values()):
+            errors.append("observations must contain nonempty evidence notes")
+        if any(note.strip() == ex.caption_detailed.strip() for note in ex.observations.values()):
+            errors.append("observations must not duplicate caption_detailed")
         if set(ex.observations) - set(CAMERAS):
             errors.append("observations contain an unknown camera")
         if not ex.ground_truth.sample_id.startswith(ex.source_run + "_"):
@@ -1036,15 +1068,11 @@ def cached_result(path: Path, identity: str, qs: dict, limits: LimitsConfig,
 
 def purpose_questions(raw: list[dict]) -> list[dict]:
     ordered = canonical_order(raw)
-    used = Counter()
     out = []
     for qid, q in zip(question_ids(len(ordered)), ordered):
         qa_type = q["type"]
-        index = used[qa_type]
-        used[qa_type] += 1
-        purposes = QUESTION_PURPOSES[qa_type]
         out.append({"id": qid, "type": qa_type, "question": q["question"].strip(),
-                    "purpose": purposes[index] if index < len(purposes) else f"detail_{index + 1}"})
+                    "purpose": QUESTION_PURPOSES[qa_type]})
     return out
 
 
@@ -1210,7 +1238,7 @@ class VllmClient:
                 body = json.loads(resp.read())
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
             sys.exit(f"local server not reachable at {self._url}: {exc}\n"
-                     "start it with scripts/serve_annotator_llama.sh")
+                     "start it with scripts/serve_annotator.sh")
         ids = [m.get("id") for m in body.get("data", [])]
         if model == "auto" and len(ids) == 1:
             model = ids[0]

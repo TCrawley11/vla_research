@@ -11,28 +11,29 @@
     action_label: RIGHT_TURN
     past_action: RIGHT_TURN
     trajectory_type: RIGHT_CURVE
-    v: 6.8472384998108975
-    w: -1.1400104462405678
+    v: 6.847
+    w: -1.140
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 3.4108993769258786
-      - -1.7618580912543365
-    - - 6.061907480661117
-      - -4.774149378451376
-    - - 8.477580768494558
-      - -8.008260630771503
-    - - 10.889670865905178
-      - -11.243614872857773
-    - - 13.319461297675883
-      - -14.464926592148048
-    - - 15.759964313528746
-      - -17.676120547577856
+    - - 3.41
+      - -1.76
+    - - 6.06
+      - -4.77
+    - - 8.48
+      - -8.01
+    - - 10.89
+      - -11.24
+    - - 13.32
+      - -14.46
+    - - 15.76
+      - -17.68
   observations:
-    FRONT: FRONT shows a wet junction with reflective pavement. FRONT_RIGHT shows a red van on the road
-      being entered and a roadside 30 sign. BACK shows a dark car and a pedestrian on the sidewalk, while
-      BACK_RIGHT includes part of another vehicle. Rain streaks and glare reduce clarity.
+    FRONT: Wet junction; reflective pavement, rain streaks and glare.
+    FRONT_RIGHT: Red van on the road being entered; roadside 30 sign.
+    BACK: Dark car on the road; pedestrian on the sidewalk.
+    BACK_RIGHT: Part of another vehicle visible.
   caption_short: Ego is turning right at a wet urban junction.
   caption_detailed: FRONT shows a wet junction with reflective pavement. FRONT_RIGHT shows a red van on
     the road being entered and a roadside 30 sign. BACK shows a dark car and a pedestrian on the sidewalk,
@@ -57,42 +58,29 @@
     question: Where is the pedestrian in BACK?
     answer: The pedestrian is on the sidewalk to the right in BACK.
   - type: prediction
-    question: Which way will ego continue through this wet junction?
-    answer: The recorded trajectory continues curving right.
+    question: How does ego drive through the wet junction in the recording?
+    answer: Ego continues turning right at about the same speed.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: Its speed stays roughly steady over the recorded horizon.
+    question: If the van in FRONT_RIGHT slows on the road being entered, what conflict could develop?
+    answer: Ego could approach the van while completing the turn.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the corner visible in FRONT?
-    answer: Yes. It curves right around the visible corner.
+    question: If the pedestrian in BACK steps off the sidewalk, which maneuver could create a conflict?
+    answer: Reversing toward that area could bring ego into the pedestrian’s path.
   - type: planning
-    question: How should ego steer through this junction?
-    answer: Follow the rightward road through the turn.
+    question: How should ego account for the red van while turning right?
+    answer: Check the van’s position and leave space while entering the road.
   - type: planning
-    question: What speed pattern does the recorded turn call for?
-    answer: The upcoming trajectory is roughly steady at 8.0 m/s.
+    question: Why should ego allow extra stopping space on this wet road?
+    answer: Wet pavement can reduce grip and increase the distance needed to stop.
   - type: planning
-    question: Which vehicle should ego watch on the road it is entering?
-    answer: Watch the red van visible in FRONT_RIGHT.
+    question: Which view should ego check before reversing near the visible pedestrian?
+    answer: Check BACK, where the pedestrian is visible on the sidewalk.
   - type: planning
-    question: What visible feature supports steering right here?
-    answer: The road in FRONT and FRONT_RIGHT bends around the sidewalk corner.
+    question: What should ego check about the roadside 30 sign before choosing a speed?
+    answer: Check that the sign applies to the road being entered and keep within its applicable limit.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It is rotating right.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both RIGHT_TURN. This does not establish constant
-      speed.
-  - type: behaviour
-    question: How is ego moving relative to the corner in FRONT?
-    answer: It is rotating right around the corner.
+    question: How is ego taking the corner in FRONT?
+    answer: It is turning right around the corner.
 - scene: Slowing behind a van on a rain-soaked straight road
   source_run: run01
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -103,29 +91,29 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: STRAIGHT
-    v: 5.562042820174221
-    w: 0.001420887987719745
+    v: 5.562
+    w: 0.001
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 2.360244923422657
-      - 0.0007285600808917376
-    - - 3.785637082035619
-      - 0.0012890592542936776
-    - - 4.798034585206811
-      - 0.0020226972198546887
-    - - 5.800574858865464
-      - 0.002817113838903801
-    - - 7.248641357142542
-      - 0.0036627816901302593
-    - - 8.894598838231662
-      - 0.004903276357163774
+    - - 2.36
+      - 0.00
+    - - 3.79
+      - 0.00
+    - - 4.80
+      - 0.00
+    - - 5.80
+      - 0.00
+    - - 7.25
+      - 0.00
+    - - 8.89
+      - 0.00
   observations:
-    FRONT: FRONT shows a red van ahead on a straight street with yellow center markings and distant traffic
-      signals. Rain streaks and puddles are visible. FRONT_RIGHT shows a construction fence beside the
-      sidewalk, and BACK looks along the wet road into strong glare. No pedestrians are clearly visible
-      in these views.
+    FRONT: Red van ahead on a straight street; yellow center markings and distant traffic signals; rain
+      streaks and puddles.
+    FRONT_RIGHT: Construction fence beside the sidewalk.
+    BACK: Wet road with strong glare.
   caption_short: Ego is moving along a wet street behind a red van.
   caption_detailed: FRONT shows a red van ahead on a straight street with yellow center markings and distant
     traffic signals. Rain streaks and puddles are visible. FRONT_RIGHT shows a construction fence beside
@@ -151,43 +139,30 @@
     question: What limits the distant view in BACK?
     answer: Strong glare over the wet road limits the distant view.
   - type: prediction
-    question: Will ego follow a straight path behind the van?
-    answer: The recorded ego trajectory is straight.
+    question: How does ego drive behind the van over the next three seconds?
+    answer: Ego keeps going straight and slows down, but is still moving after three seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It slows down over the recorded horizon.
+    question: If the red van ahead brakes, what could happen if ego maintains its approach speed?
+    answer: The gap could shrink, increasing the risk of reaching the van’s rear.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It is still moving at the end of the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the straight road markings in FRONT?
-    answer: Yes. Its straight course agrees with the road markings ahead.
+    question: If glare in BACK obscures an approaching vehicle, which maneuver becomes harder to assess?
+    answer: Reversing or changing lanes becomes harder to assess because rear traffic may be obscured.
   - type: planning
-    question: What path should ego follow on this street?
-    answer: Continue along the straight road corridor.
+    question: How should ego account for the red van on the wet road?
+    answer: Leave room to brake and adjust speed if the van slows.
   - type: planning
-    question: How should ego change speed while approaching the van?
-    answer: Slow down, consistent with the recorded reduction from about 4.7 to 3.3 m/s.
+    question: Why is the construction fence in FRONT_RIGHT relevant before moving toward the roadside?
+    answer: It borders the sidewalk and constrains the space available near the road edge.
   - type: planning
-    question: What should ego monitor ahead?
-    answer: Monitor the red van and the distant traffic signals.
+    question: How should strong rear glare affect a lane-change decision?
+    answer: Check rear traffic carefully and defer the maneuver if the view is insufficient.
   - type: planning
-    question: Does the image prove that the van caused ego to slow?
-    answer: No. The van is ahead, but the cause of the recorded slowing is not established.
+    question: What should ego establish about the distant signals before entering their junction?
+    answer: Identify the signal relevant to its lane and confirm its state before entering.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
-  - type: behaviour
-    question: Where is ego moving relative to the red van?
+    question: Is ego driving ahead of or behind the red van?
     answer: Ego is moving on the road behind the van.
-- scene: Stationary beneath an elevated railway before pulling away
+- scene: Stopped beneath an elevated railway before pulling away
   source_run: run02
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
   ground_truth:
@@ -197,30 +172,29 @@
     action_label: STOP
     past_action: STOP
     trajectory_type: STRAIGHT
-    v: 0.0
-    w: -0.0
+    v: 0.000
+    w: -0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
-    - - 0.16330726157944928
-      - -0.00010064587699671445
-    - - 1.5600435136172275
-      - 4.0040413711434444e-05
-    - - 4.267303739500045
-      - 0.0005372808123264437
-    - - 8.12762522457767
-      - 0.0006401800179717939
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.16
+      - -0.00
+    - - 1.56
+      - 0.00
+    - - 4.27
+      - 0.00
+    - - 8.13
+      - 0.00
   observations:
-    FRONT: FRONT shows a straight road beneath an elevated railway, with yellow center lines and white
-      road markings near a side junction. BACK_LEFT shows a pedestrian beside a brick building. No vehicle
-      is clearly visible in the immediate road ahead. Strong alternating sunlight and railway shadows
-      fall across the pavement.
-  caption_short: Ego is stationary on an urban road beneath an elevated railway.
+    FRONT: Straight road beneath an elevated railway; yellow center lines and white markings near a side
+      junction; alternating sunlight and shadows; no vehicle clearly visible in the immediate road ahead.
+    BACK_LEFT: Pedestrian beside a brick building.
+  caption_short: Ego is stopped on an urban road beneath an elevated railway.
   caption_detailed: FRONT shows a straight road beneath an elevated railway, with yellow center lines
     and white road markings near a side junction. BACK_LEFT shows a pedestrian beside a brick building.
     No vehicle is clearly visible in the immediate road ahead. Strong alternating sunlight and railway
@@ -245,42 +219,29 @@
     question: What does BACK show behind ego?
     answer: BACK shows the road continuing beneath the elevated railway.
   - type: prediction
-    question: Which way will ego move beneath the railway?
-    answer: The recorded path moves forward in a straight line.
+    question: What does ego do next beneath the railway in the recording?
+    answer: Ego starts moving and continues along the straight road.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It pulls away from standstill and speeds up.
+    question: If the pedestrian in BACK_LEFT enters the road, which maneuver could bring ego closer?
+    answer: Moving backward toward the left rear could bring ego closer to the pedestrian.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It starts moving after about 1 s.
-  - type: prediction
-    question: Does the recorded path follow the road beneath the railway in FRONT?
-    answer: Yes. It advances straight along the road beneath the railway.
+    question: If a vehicle emerges from the side junction in FRONT, what conflict could develop?
+    answer: It could cross in front of ego.
   - type: planning
-    question: What movement follows the current stop?
-    answer: Pull away along the straight road, as shown by the recorded future.
+    question: What should ego check before pulling away near the side junction?
+    answer: Check the junction for entering traffic and confirm the forward route is clear.
   - type: planning
-    question: How long does the recorded vehicle wait before pulling away?
-    answer: It starts moving after about 1 s.
+    question: How should alternating sunlight and railway shadows affect scanning?
+    answer: Check shaded areas carefully where road users or markings may be harder to distinguish.
   - type: planning
-    question: What should ego check near the side junction?
-    answer: Check the junction and the pedestrian visible in BACK_LEFT before continuing.
+    question: Why is the pedestrian in BACK_LEFT relevant before reversing?
+    answer: The pedestrian is near the left rear, so reversing requires checking that area for clearance.
   - type: planning
-    question: Can the images establish why ego is currently stopped?
-    answer: No. The road layout is visible, but the exact reason for stopping is not established.
-  - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently stationary.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both STOP. This does not establish constant
-      speed.
+    question: How should ego use the visible yellow center lines when moving off?
+    answer: Keep to its side of the marked roadway while checking the junction.
   - type: behaviour
     question: Where is ego currently waiting in the scene?
-    answer: It is stationary on the road beneath the elevated railway.
+    answer: It is stopped on the road beneath the elevated railway.
 - scene: Steady travel beneath the railway near a junction
   source_run: run02
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -291,29 +252,29 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: STRAIGHT
-    v: 8.069045205063942
-    w: 1.2948897468793325e-05
+    v: 8.069
+    w: 0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 4.037110032937715
-      - -0.00025881600032841333
-    - - 8.074220081451443
-      - -0.0005481495748068683
-    - - 12.111337751570703
-      - -0.0008222204682070003
-    - - 16.14826873661496
-      - -0.009030957990700507
-    - - 20.18490144686236
-      - -0.07560472351729067
-    - - 24.21451316543091
-      - -0.28784249188510025
+    - - 4.04
+      - -0.00
+    - - 8.07
+      - -0.00
+    - - 12.11
+      - -0.00
+    - - 16.15
+      - -0.01
+    - - 20.18
+      - -0.08
+    - - 24.21
+      - -0.29
   observations:
-    FRONT: FRONT shows a straight road under an elevated railway, approaching a junction with buildings
-      beyond. Double yellow center lines and white lane boundaries are visible. FRONT_RIGHT includes a
-      small red vehicle partly visible beside a building. BACK shows the railway continuing along the
-      road behind, with no nearby pedestrian clearly visible.
+    FRONT: Straight road beneath an elevated railway approaching a junction; buildings beyond, double yellow
+      center lines and white lane boundaries.
+    FRONT_RIGHT: Small red vehicle partly visible beside a building.
+    BACK: Railway continuing along the road; no nearby pedestrian clearly visible.
   caption_short: Ego moves along a marked urban road beneath an elevated railway.
   caption_detailed: FRONT shows a straight road under an elevated railway, approaching a junction with
     buildings beyond. Double yellow center lines and white lane boundaries are visible. FRONT_RIGHT includes
@@ -339,41 +300,28 @@
     question: What does BACK show along the route behind?
     answer: The elevated railway and marked road continue behind ego.
   - type: prediction
-    question: Will the recorded path turn at the junction ahead?
-    answer: The recorded path remains straight over the provided horizon.
+    question: How does ego approach the junction beneath the railway in the recording?
+    answer: Ego continues straight at about the same speed.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: Its speed stays roughly steady over the recorded horizon.
+    question: If the partly visible vehicle in FRONT_RIGHT enters the road, what conflict could develop?
+    answer: It could pull out in front of ego near the junction.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the road beneath the railway in FRONT?
-    answer: Yes. It continues straight along that road toward the visible junction.
+    question: If railway shadows hide a road user near the junction, how could the approach be affected?
+    answer: Ego could detect the road user late, leaving less time to respond.
   - type: planning
-    question: What maneuver matches the recorded path beneath the railway?
-    answer: Continue straight along the road.
+    question: Which traffic should ego check before proceeding through the junction?
+    answer: Check the intersecting road and the partly visible vehicle in FRONT_RIGHT.
   - type: planning
-    question: What speed adjustment is shown in the recorded horizon?
-    answer: No substantial adjustment; the trajectory stays near 8.1 m/s.
+    question: Why should ego avoid assuming the partly visible vehicle will remain beside the building?
+    answer: Its next movement is not established by this single view.
   - type: planning
-    question: What road feature should ego monitor ahead?
-    answer: Monitor the junction ahead beneath the railway.
+    question: What should ego do if the relevant signal cannot be read on approach?
+    answer: Reduce speed as needed and establish the applicable signal or priority before entering.
   - type: planning
-    question: What visible geometry agrees with the recorded straight motion?
-    answer: The marked road corridor in FRONT runs straight toward the junction.
+    question: How should ego use the lane boundaries beneath the railway?
+    answer: Stay within the marked corridor and leave room for traffic that may enter at the junction.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
-  - type: behaviour
-    question: How does current motion relate to the railway road?
+    question: How is ego driving along the road beneath the railway?
     answer: Ego is moving forward along the road beneath the railway.
 - scene: Accelerating on a hazy divided highway
   source_run: run03
@@ -385,28 +333,29 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: STRAIGHT
-    v: 12.843949893543114
-    w: 2.877750854001074e-05
+    v: 12.844
+    w: 0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 6.989049408048211
-      - -7.933625346852324e-06
-    - - 15.055087276443171
-      - -0.0029358520328602034
-    - - 24.14303288515226
-      - -0.0184512103445158
-    - - 34.20050958062803
-      - -0.04564143752865252
-    - - 45.17795419486152
-      - -0.07835383304119137
-    - - 57.022005798391696
-      - -0.11366911874085484
+    - - 6.99
+      - -0.00
+    - - 15.06
+      - -0.00
+    - - 24.14
+      - -0.02
+    - - 34.20
+      - -0.05
+    - - 45.18
+      - -0.08
+    - - 57.02
+      - -0.11
   observations:
-    FRONT: FRONT shows a broad divided highway with dashed white lane lines and a guardrail on the right.
-      Haze obscures the distance, and no nearby vehicles or pedestrians are clearly visible. FRONT_RIGHT
-      shows rocks and trees beyond the guardrail. BACK shows the marked highway extending behind ego.
+    FRONT: Broad divided highway; dashed white lane lines and right-side guardrail; haze obscuring the distance;
+      no nearby vehicles or pedestrians clearly visible.
+    FRONT_RIGHT: Rocks and trees beyond the guardrail.
+    BACK: Marked highway extending behind ego.
   caption_short: Ego is moving on a divided highway with reduced distant visibility.
   caption_detailed: FRONT shows a broad divided highway with dashed white lane lines and a guardrail on
     the right. Haze obscures the distance, and no nearby vehicles or pedestrians are clearly visible.
@@ -420,8 +369,8 @@
     question: Are nearby road users clearly visible in FRONT?
     answer: No nearby vehicles or pedestrians are clearly visible in FRONT.
   - type: perception
-    question: Are traffic lights visible over the highway in FRONT?
-    answer: No traffic lights are visible in FRONT.
+    question: What bounds the roadway on the right in FRONT?
+    answer: A guardrail bounds the roadway on the right.
   - type: perception
     question: What separates the highway lanes in FRONT?
     answer: Dashed white lines separate the lanes.
@@ -432,41 +381,28 @@
     question: What is outside the road edge in FRONT_RIGHT?
     answer: A guardrail separates the road from rocks and trees.
   - type: prediction
-    question: Which path will ego take along this highway?
-    answer: The recorded path continues straight.
+    question: How does ego drive on the divided highway over the next three seconds?
+    answer: Ego keeps going straight and speeds up over the next three seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It speeds up over the recorded horizon.
+    question: If a vehicle becomes visible only after emerging from the haze, what risk increases?
+    answer: Ego may have less time and distance to respond to that vehicle.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the highway direction visible in FRONT?
-    answer: Yes. Both the recorded path and the nearby highway continue straight.
+    question: If ego drifts right on this stretch, what visible boundary could it approach?
+    answer: It could approach the right-side guardrail.
   - type: planning
-    question: What maneuver matches the recorded highway path?
-    answer: Continue straight along the highway.
+    question: How should haze affect ego’s speed choice on the highway?
+    answer: Choose a speed that allows a response within the visible road ahead.
   - type: planning
-    question: How does the recorded speed change on this stretch?
-    answer: It increases from about 14.0 to 23.7 m/s.
+    question: Why does an empty nearby view not establish that acceleration is safe?
+    answer: Haze obscures the distance, so the view does not establish that the road farther ahead is clear.
   - type: planning
-    question: What should ego monitor on the hazy highway?
-    answer: Monitor the lane boundaries and the road emerging from the haze.
+    question: What should ego check before moving toward the highway’s right edge?
+    answer: Check its clearance from the guardrail and remain on the roadway.
   - type: planning
-    question: Do the images establish that the recorded acceleration is safe?
-    answer: No. They show an unobstructed nearby road, but distant hazards cannot be ruled out.
+    question: How should ego maintain its lane when distant markings are hard to see?
+    answer: Use the visible lane boundaries and reduce speed if they cannot be followed confidently.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
-  - type: behaviour
-    question: How is ego positioned relative to the highway direction?
+    question: Is ego driving along the highway or across it?
     answer: It is moving along the highway rather than across it.
 - scene: Highway curve with traffic beyond the divider
   source_run: run03
@@ -478,28 +414,29 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: LEFT_CURVE
-    v: 24.182450132338424
-    w: 0.13961454734934436
+    v: 24.182
+    w: 0.140
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 12.087147807266403
-      - 0.2278691024230004
-    - - 24.131084657174014
-      - 1.2732747123232002
-    - - 36.07344706197095
-      - 3.1506212887156337
-    - - 47.85826842315367
-      - 5.84639256643465
-    - - 59.43086265914337
-      - 9.341783585273907
-    - - 70.7351669067441
-      - 13.6270019811769
+    - - 12.09
+      - 0.23
+    - - 24.13
+      - 1.27
+    - - 36.07
+      - 3.15
+    - - 47.86
+      - 5.85
+    - - 59.43
+      - 9.34
+    - - 70.74
+      - 13.63
   observations:
-    FRONT: FRONT shows a broad highway bending left, with dashed lane markings and a right-side guardrail.
-      Haze reduces distant visibility. BACK_LEFT shows part of a light-colored vehicle beyond the concrete
-      divider; no nearby pedestrians are clearly visible. Trees and rocky slopes surround the roadway.
+    FRONT: Broad highway bending left; dashed lane markings and right-side guardrail; haze reducing distant
+      visibility.
+    BACK_LEFT: Part of a light-colored vehicle beyond the concrete divider; no nearby pedestrian clearly
+      visible.
   caption_short: Ego moves along a highway that bends left through haze.
   caption_detailed: FRONT shows a broad highway bending left, with dashed lane markings and a right-side
     guardrail. Haze reduces distant visibility. BACK_LEFT shows part of a light-colored vehicle beyond
@@ -513,8 +450,8 @@
     question: Where is a light-colored vehicle partly visible?
     answer: It is partly visible beyond the concrete divider in BACK_LEFT.
   - type: perception
-    question: Are traffic lights visible above the curve in FRONT?
-    answer: No traffic lights are visible above the curve in FRONT.
+    question: What bounds the highway on the right in FRONT?
+    answer: A guardrail follows the right side of the highway.
   - type: perception
     question: What markings guide traffic through the curve?
     answer: Dashed white lane lines follow the curve.
@@ -525,42 +462,30 @@
     question: What separates the vehicle in BACK_LEFT from ego's roadway?
     answer: A concrete divider separates the roadways.
   - type: prediction
-    question: Which way does ego's recorded path curve on the highway?
-    answer: It curves left.
+    question: How does ego take the highway bend in the recording?
+    answer: Ego follows the left bend at about the same speed.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: Its speed stays roughly steady over the recorded horizon.
+    question: If ego continues straight instead of following the left bend, what boundary could it approach?
+    answer: It could approach the outside road edge and right-side guardrail.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Will the recorded path bend in the same direction as the visible highway?
-    answer: Yes. Both the recorded path and visible highway curve left.
+    question: If haze hides slower traffic farther around the bend, what risk could develop?
+    answer: Ego could encounter that traffic with limited time to slow.
   - type: planning
-    question: How should ego steer along the highway?
-    answer: Follow the leftward highway curve.
+    question: How should ego choose speed for the bend in haze?
+    answer: Choose a speed that allows it to follow the curve and respond within the visible distance.
   - type: planning
-    question: What speed pattern is recorded through this curve?
-    answer: The recorded speed is roughly steady at 24.2 m/s.
+    question: Why is the concrete divider relevant when assessing the vehicle in BACK_LEFT?
+    answer: It separates that vehicle from ego’s roadway; nearby appearance alone does not establish a shared
+      travel lane.
   - type: planning
-    question: What should ego watch while following this bend?
-    answer: Watch the lane lines and the road ahead through the haze.
+    question: What should guide steering through this highway curve?
+    answer: Follow the curved lane markings while maintaining clearance from the road edges.
   - type: planning
-    question: What visible feature supports leftward steering?
-    answer: The lane markings and right-side guardrail curve left.
+    question: Where should ego look while driving around the bend?
+    answer: Check the lane ahead as it becomes visible through the haze.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It is rotating left.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
-  - type: behaviour
-    question: Does the FORWARD label mean ego has no rotation here?
-    answer: No. Ego has a small leftward rotation while following the highway.
+    question: Does the FORWARD label mean ego is going completely straight here?
+    answer: No. Ego is turning slightly left as it follows the highway.
 - scene: Leaving a stop near an urban junction and pedestrian
   source_run: run04
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -571,29 +496,29 @@
     action_label: FORWARD
     past_action: STOP
     trajectory_type: LEFT_CURVE
-    v: 4.585016930968659
-    w: 0.08431726968618432
+    v: 4.585
+    w: 0.084
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 2.8341776326879615
-      - 0.2818943620428515
-    - - 6.668118216078114
-      - 1.2385666218919154
-    - - 10.171594285668043
-      - 3.1566095749131677
-    - - 12.967026009338458
-      - 6.02978560872262
-    - - 14.754049385734318
-      - 9.608851038198274
-    - - 15.4994578290022
-      - 13.57557469225354
+    - - 2.83
+      - 0.28
+    - - 6.67
+      - 1.24
+    - - 10.17
+      - 3.16
+    - - 12.97
+      - 6.03
+    - - 14.75
+      - 9.61
+    - - 15.50
+      - 13.58
   observations:
-    FRONT: FRONT shows a junction, a blue car beyond it, and a pedestrian near the right sidewalk. Crosswalk
-      markings span the road. FRONT_LEFT shows traffic signals and distant vehicles along the intersecting
-      street. FRONT_RIGHT shows the elevated roadway beside the junction. The scene is brightly lit with
-      clear nearby visibility.
+    FRONT: Junction with crosswalk markings; blue car beyond the junction and pedestrian near the right
+      sidewalk; clear nearby visibility.
+    FRONT_LEFT: Traffic signals and distant vehicles along the intersecting street.
+    FRONT_RIGHT: Elevated roadway beside the junction.
   caption_short: Ego moves through an urban junction beside an elevated roadway.
   caption_detailed: FRONT shows a junction, a blue car beyond it, and a pedestrian near the right sidewalk.
     Crosswalk markings span the road. FRONT_LEFT shows traffic signals and distant vehicles along the
@@ -619,42 +544,30 @@
     question: What structure runs beside the road in FRONT_RIGHT?
     answer: An elevated roadway runs beside the junction.
   - type: prediction
-    question: Which way will the recorded path curve through this junction?
-    answer: The recorded path curves left.
+    question: What does ego do after the recent stop near this junction?
+    answer: Ego speeds up while turning left.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It speeds up over the recorded horizon.
+    question: If the pedestrian on the right enters the crosswalk, what conflict could develop?
+    answer: The pedestrian could enter the area ego is approaching through the junction.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Does the recorded path head toward the intersecting street in FRONT_LEFT?
-    answer: Its leftward curve heads toward the intersecting street.
+    question: If traffic enters from the intersecting street in FRONT_LEFT, what could happen during ego’s
+      turn?
+    answer: The entering traffic could cross or merge with ego’s turning path.
   - type: planning
-    question: What maneuver matches the recorded future at the junction?
-    answer: Continue into a leftward curve through the junction.
+    question: How should ego account for the pedestrian near the right sidewalk?
+    answer: Watch the pedestrian and be prepared to yield if they enter the crossing.
   - type: planning
-    question: How does the recorded speed change after the recent stop?
-    answer: It increases from about 5.7 to 8.1 m/s.
+    question: What should ego confirm about the visible signals before entering the junction?
+    answer: Confirm the signal relevant to its lane and its state; visibility of signal heads alone is insufficient.
   - type: planning
-    question: Which road user near the junction should ego watch?
-    answer: Watch the pedestrian near the right sidewalk in FRONT.
+    question: Which traffic needs checking before the leftward maneuver?
+    answer: Check traffic on the intersecting street in FRONT_LEFT and the route through the junction.
   - type: planning
-    question: Do the images prove which signal permits ego's movement?
-    answer: No. Signal heads are visible, but their state and lane assignment are not clear enough to
-      assert.
+    question: Why should ego keep the crosswalk clear when waiting at this junction?
+    answer: Keeping it clear preserves space for pedestrians to cross.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It is rotating left.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The past dominant label was STOP; the current label is FORWARD.
-  - type: behaviour
-    question: How does current motion differ from the recent dominant STOP label?
-    answer: Ego is moving now after a recent period dominated by stopping.
+    question: Is ego still stopped, or has it started moving?
+    answer: Ego is moving now after recently being stopped.
 - scene: Stopped at red signals with differently colored side signals
   source_run: run04
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -665,34 +578,30 @@
     action_label: STOP
     past_action: STOP
     trajectory_type: STOPPING
-    v: 4.3869020234203546e-07
-    w: 1.7660873609948363e-13
+    v: 0.000
+    w: 0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
-    - - 0.0
-      - 0.0
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
+    - - 0.00
+      - 0.00
   observations:
-    FRONT: FRONT shows a broad junction with red signal heads facing the road ahead and a white transverse
-      line before it. Signals to the left appear yellow in FRONT_LEFT. Distant vehicles are visible ahead,
-      but no nearby pedestrians are clearly visible. BACK shows the approach road and an overpass farther
-      behind.
-  caption_short: Ego is stationary before a signalized urban junction.
-  caption_detailed: FRONT shows a broad junction with red signal heads facing the road ahead and a white
-    transverse line before it. Signals to the left appear yellow in FRONT_LEFT. Distant vehicles are visible
-    ahead, but no nearby pedestrians are clearly visible. BACK shows the approach road and an overpass
-    farther behind.
+    FRONT: Broad junction; red signal heads facing the road ahead; white line across the road before the junction; distant vehicles; no nearby pedestrian clearly visible.
+    FRONT_LEFT: Side-facing signal heads appear yellow.
+    BACK: Approach road with an overpass farther behind.
+  caption_short: Ego is stopped before a signalized urban junction.
+  caption_detailed: FRONT shows a broad junction with red signal heads facing the road ahead and a white line across the road before it. Signals to the left appear yellow in FRONT_LEFT. Distant vehicles are visible ahead, but no nearby pedestrians are clearly visible. BACK shows the approach road and an overpass farther behind.
   qa_pairs:
   - type: perception
     question: What road layout is directly ahead in FRONT?
@@ -705,7 +614,7 @@
     answer: Those signal heads are red.
   - type: perception
     question: What marking lies across ego's lane before the junction?
-    answer: A white transverse stop line lies across the lane.
+    answer: A white stop line runs across the lane.
   - type: perception
     question: Is nearby visibility obscured by heavy fog?
     answer: No. Nearby junction details are clearly visible.
@@ -713,42 +622,33 @@
     question: What color do the side-facing signals appear in FRONT_LEFT?
     answer: They appear yellow; this does not establish permission for ego to move.
   - type: prediction
-    question: Will ego move into the junction during the recorded horizon?
-    answer: No. The recorded trajectory remains stationary.
+    question: What does ego do at this junction over the next three seconds?
+    answer: Ego stays stopped for the next three seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It stays at zero speed throughout the horizon.
+    question: If ego enters while a red signal controls its lane, what conflict could occur?
+    answer: It could enter the path of traffic or pedestrians permitted to cross.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains stopped throughout the recorded horizon.
-  - type: prediction
-    question: Will ego advance toward the junction visible in FRONT during this horizon?
-    answer: No. The stationary trajectory keeps it at its current approach position.
+    question: If ego starts while cross traffic is still passing through the junction, what conflict could develop?
+    answer: Ego could enter the crossing traffic’s path.
   - type: planning
-    question: What should ego do at this junction now?
-    answer: Remain stopped, consistent with the recorded future and red signals ahead.
+    question: What should ego establish before treating the yellow signals in FRONT_LEFT as permission to
+      move?
+    answer: Establish whether they control ego’s lane; their side-facing appearance alone does not show
+      that.
   - type: planning
-    question: Do the yellow side-facing signals justify starting now?
-    answer: No. They do not establish permission for ego to move.
+    question: What is the appropriate response if the red signals ahead control ego’s lane?
+    answer: Remain stopped until the applicable signal permits movement and the route is clear.
   - type: planning
-    question: What should ego monitor while stopped?
-    answer: Monitor the relevant signal and traffic entering the junction.
+    question: What should ego check before departing after receiving permission to move?
+    answer: Check for crossing traffic and pedestrians, and confirm that the route through the junction
+      is clear.
   - type: planning
-    question: What visible detail agrees with the recorded stop?
-    answer: Red signal heads are visible facing the road ahead.
+    question: Why is the white line across the road relevant to waiting at this junction?
+    answer: It provides a visible stopping reference before the junction; ego should avoid advancing beyond
+      the applicable stop line.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently stationary.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both STOP. This does not establish constant
-      speed.
-  - type: behaviour
-    question: Where is ego stationary relative to the junction?
-    answer: It is stationary on the approach before the junction.
+    question: Where is ego stopped near the junction?
+    answer: It is stopped before the junction.
 - scene: City traffic with a motorcycle, cars, and a truck behind
   source_run: run05
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -759,28 +659,29 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: STRAIGHT
-    v: 8.07532758880391
-    w: -2.320074735663397e-07
+    v: 8.075
+    w: -0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 4.040627419350882
-      - 2.7688023469763998e-05
-    - - 8.081950283687961
-      - 0.00046921806513387093
-    - - 12.121050754197446
-      - 0.00011974190077096436
-    - - 16.020251143327215
-      - 1.2292635760129123e-05
-    - - 19.650971839733966
-      - -0.00017709416042318432
-    - - 23.036768924967028
-      - -0.00036608921340647305
+    - - 4.04
+      - 0.00
+    - - 8.08
+      - 0.00
+    - - 12.12
+      - 0.00
+    - - 16.02
+      - 0.00
+    - - 19.65
+      - -0.00
+    - - 23.04
+      - -0.00
   observations:
-    FRONT: FRONT shows an urban street with a blue car and a motorcycle to the left. FRONT_LEFT shows
-      a nearby silver car. BACK shows a large red truck, while FRONT_RIGHT includes a pedestrian near
-      a tree and motorcycles beside the sidewalk. Lane lines and crossing markings are visible in daylight.
+    FRONT: Urban street; blue car and motorcycle to the left; lane lines and crossing markings in daylight.
+    FRONT_LEFT: Nearby silver car.
+    FRONT_RIGHT: Pedestrian near a tree; motorcycles beside the sidewalk.
+    BACK: Large red truck.
   caption_short: Ego moves along a city street with traffic around it.
   caption_detailed: FRONT shows an urban street with a blue car and a motorcycle to the left. FRONT_LEFT
     shows a nearby silver car. BACK shows a large red truck, while FRONT_RIGHT includes a pedestrian near
@@ -805,41 +706,29 @@
     question: What large vehicle is behind ego in BACK?
     answer: A large red truck is behind ego.
   - type: prediction
-    question: Which way will ego's recorded path go along this street?
-    answer: It continues straight.
+    question: How does ego drive along this street over the next three seconds?
+    answer: Ego keeps going straight and slows down, but is still moving after three seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It slows down over the recorded horizon.
+    question: If the motorcycle to the left moves into ego’s lane, what conflict could develop?
+    answer: It could reduce the available space ahead or alongside ego.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It is still moving at the end of the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the street direction visible in FRONT?
-    answer: Yes. It continues along the straight street ahead.
+    question: If ego brakes abruptly with the red truck behind, what risk could increase?
+    answer: A rear-end conflict could become more likely, depending on the truck’s gap and response.
   - type: planning
-    question: What maneuver matches the recorded route along this street?
-    answer: Continue straight along the road.
+    question: Which road users should ego check before moving left?
+    answer: Check the motorcycle and blue car in FRONT and the nearby silver car in FRONT_LEFT.
   - type: planning
-    question: How should ego adjust speed over the recorded horizon?
-    answer: Slow from about 8.1 to 6.8 m/s, as shown by the trajectory.
+    question: How should ego account for the pedestrian near the tree in FRONT_RIGHT?
+    answer: Monitor the pedestrian and leave room to yield if they approach the roadway.
   - type: planning
-    question: Which nearby traffic should ego monitor?
-    answer: Monitor the motorcycle and cars to the left and the red truck behind.
+    question: Why should ego check BACK when preparing to slow?
+    answer: The red truck is behind ego, so rear traffic matters when choosing a controlled slowdown where
+      possible.
   - type: planning
-    question: Does the image prove why ego is slowing?
-    answer: No. Nearby traffic is visible, but the cause of slowing is not established.
+    question: What should ego establish about the distant signals before entering the junction?
+    answer: Identify the signal relevant to its lane and confirm its state.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
-  - type: behaviour
-    question: Where is ego moving relative to the red truck?
+    question: Is ego driving ahead of or behind the red truck?
     answer: Ego is moving on the road ahead of the truck visible in BACK.
 - scene: Stopped by a city crossing with a truck alongside
   source_run: run05
@@ -851,30 +740,30 @@
     action_label: STOP
     past_action: STOP
     trajectory_type: STOPPING
-    v: 0.0
-    w: -0.0
+    v: 0.000
+    w: -0.000
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 0.0
-      - -0.0
-    - - 0.0
-      - -0.0
-    - - 0.0
-      - -0.0
-    - - 0.0
-      - -0.0
-    - - 0.0
-      - -0.0
-    - - 0.0
-      - -0.0
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
+    - - 0.00
+      - -0.00
   observations:
-    FRONT: FRONT shows a signalized city junction with zebra crossing stripes and several signal heads.
-      A large red truck fills much of FRONT_LEFT, blocking that view. BACK includes the truck chassis
-      beside ego and distant cars. FRONT_RIGHT shows a sidewalk corner with bins and a shop; no nearby
-      pedestrian is clearly visible there.
-  caption_short: Ego is stationary near a city crossing with a red truck alongside.
+    FRONT: Signalized city junction; zebra crossing stripes and several signal heads.
+    FRONT_LEFT: Large red truck blocking much of the view.
+    FRONT_RIGHT: Sidewalk corner with bins and a shop; no nearby pedestrian clearly visible.
+    BACK: Truck chassis beside ego; distant cars.
+  caption_short: Ego is stopped near a city crossing with a red truck alongside.
   caption_detailed: FRONT shows a signalized city junction with zebra crossing stripes and several signal
     heads. A large red truck fills much of FRONT_LEFT, blocking that view. BACK includes the truck chassis
     beside ego and distant cars. FRONT_RIGHT shows a sidewalk corner with bins and a shop; no nearby pedestrian
@@ -899,42 +788,29 @@
     question: What part of the truck is visible in BACK?
     answer: The truck's chassis and rear wheels are visible alongside ego.
   - type: prediction
-    question: Will ego cross the junction during the recorded stationary horizon?
-    answer: No. Ego remains stationary during that horizon.
+    question: What does ego do beside the truck and crossing over the next three seconds?
+    answer: Ego stays stopped for the next three seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It stays at zero speed throughout the horizon.
+    question: If ego moves before checking the area hidden by the truck, what could go unnoticed?
+    answer: A road user in the obscured area could go unnoticed.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains stopped throughout the recorded horizon.
-  - type: prediction
-    question: Will ego advance toward the zebra crossing visible in FRONT?
-    answer: No. The stationary trajectory keeps ego at its current position.
+    question: If ego moves left while the truck remains alongside, what conflict could develop?
+    answer: Ego could hit the truck alongside it.
   - type: planning
-    question: What should ego do during the recorded horizon?
-    answer: Remain stopped.
+    question: How should the truck blocking FRONT_LEFT affect departure checks?
+    answer: Check the obscured area before moving; the truck prevents confirming that it is clear.
   - type: planning
-    question: Can a signal-change time be used to schedule departure?
-    answer: No. The record provides no signal-change time.
+    question: What must ego establish about the signals before treating them as permission to proceed?
+    answer: Identify the controlling signal and its state; the visible heads alone do not establish permission.
   - type: planning
-    question: What should ego check before any later movement?
-    answer: Check the relevant signal, crossing, and area obscured by the truck.
+    question: Why should ego avoid waiting on the zebra crossing?
+    answer: Waiting on it could obstruct pedestrians using the crossing.
   - type: planning
-    question: Does the current STOP label prove the visible signal is red?
-    answer: No. A motion label does not establish the color or cause of the signal state.
+    question: What should ego check before moving beside the large truck?
+    answer: Check that there is enough room beside the truck and that the crossing ahead is clear before moving.
   - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently stationary.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It has negligible current rotation.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both STOP. This does not establish constant
-      speed.
-  - type: behaviour
-    question: Where is ego stopped relative to the crossing?
-    answer: It is stationary on the approach to the visible crossing.
+    question: Is ego stopped before or past the crossing?
+    answer: It is stopped before the crossing.
 - scene: Residential curve with a sidewalk pedestrian
   source_run: run43
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -945,29 +821,29 @@
     action_label: RIGHT_TURN
     past_action: FORWARD
     trajectory_type: RIGHT_CURVE
-    v: 8.062791473869174
-    w: -0.22515129514343277
+    v: 8.063
+    w: -0.225
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 4.030306289188081
-      - -0.19329022544942975
-    - - 8.034539076682893
-      - -0.6803355341804029
-    - - 11.99375148550636
-      - -1.4428311033527104
-    - - 15.892379506890185
-      - -2.4685398585819067
-    - - 19.714884191584225
-      - -3.750398204421658
-    - - 23.445648996700374
-      - -5.283190317430677
+    - - 4.03
+      - -0.19
+    - - 8.03
+      - -0.68
+    - - 11.99
+      - -1.44
+    - - 15.89
+      - -2.47
+    - - 19.71
+      - -3.75
+    - - 23.45
+      - -5.28
   observations:
-    FRONT: FRONT shows an unmarked residential road bending right, with a pedestrian on the left sidewalk.
-      FRONT_LEFT also shows that pedestrian beside stone buildings. Trees and street lamps border the
-      road. BACK shows the road behind without a clearly visible nearby vehicle. Haze obscures distant
-      details.
+    FRONT: Unmarked residential road bending right; pedestrian on the left sidewalk; trees and street lamps;
+      haze obscuring distant details.
+    FRONT_LEFT: Pedestrian beside stone buildings.
+    BACK: Road behind ego; no nearby vehicle clearly visible.
   caption_short: Ego is turning right along a hazy residential street.
   caption_detailed: FRONT shows an unmarked residential road bending right, with a pedestrian on the left
     sidewalk. FRONT_LEFT also shows that pedestrian beside stone buildings. Trees and street lamps border
@@ -981,8 +857,8 @@
     question: Where is the pedestrian relative to the road in FRONT?
     answer: The pedestrian is on the left sidewalk, outside the roadway.
   - type: perception
-    question: Are traffic lights clearly visible in FRONT?
-    answer: No traffic lights are clearly visible in FRONT.
+    question: What borders the residential road near the pedestrian?
+    answer: The pedestrian is on the left sidewalk beside stone buildings.
   - type: perception
     question: Are painted lane lines visible on the road in FRONT?
     answer: No painted lane lines are visible on this stretch.
@@ -993,41 +869,30 @@
     question: Is the sidewalk pedestrian also visible in FRONT_LEFT?
     answer: Yes. The pedestrian is beside the stone buildings in FRONT_LEFT.
   - type: prediction
-    question: Which way will ego continue along the visible residential bend?
-    answer: The recorded trajectory continues curving right.
+    question: How does ego drive along the residential street in the recording?
+    answer: Ego follows the right bend at about the same speed.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: Its speed stays roughly steady over the recorded horizon.
+    question: If the pedestrian on the left steps into the roadway, what conflict could develop?
+    answer: The pedestrian could enter the space ego is approaching.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It remains moving throughout the recorded horizon.
-  - type: prediction
-    question: Does the recorded path follow the bend visible in FRONT?
-    answer: Yes. The rightward trajectory follows the direction of the residential bend.
+    question: If haze hides a vehicle farther around the bend, what could limit ego’s response?
+    answer: Late visibility could leave less time to slow or stop.
   - type: planning
-    question: How should ego follow this road?
-    answer: Continue around the rightward bend.
+    question: How should ego respond if the sidewalk pedestrian enters its path?
+    answer: Slow or stop as needed to yield and avoid entering the pedestrian’s path.
   - type: planning
-    question: What speed pattern is recorded through the bend?
-    answer: The recorded speed stays roughly steady at 8.1 m/s.
+    question: What should guide ego’s position on this unmarked bend?
+    answer: Use the visible road edges to follow the bend while leaving clearance from the sidewalk.
   - type: planning
-    question: Which nearby road user should ego monitor?
-    answer: Monitor the pedestrian on the left sidewalk.
+    question: Why should ego allow a cautious approach around the hazy bend?
+    answer: The bend and haze limit the view of the road farther ahead.
   - type: planning
-    question: What visible feature agrees with the rightward trajectory?
-    answer: The road edges and sidewalk curve right ahead.
-  - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It is rotating right.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The past dominant label was FORWARD; the current label is RIGHT_TURN.
+    question: What should ego check before reversing on this residential road?
+    answer: Check BACK for road users and clearance; the current absence of a clearly visible vehicle does
+      not guarantee a clear route.
   - type: behaviour
     question: Is ego following the road bend or crossing the road?
-    answer: It is turning along the visible rightward road bend.
+    answer: It is following the right bend in the road.
 - scene: Braking toward a crossing while the current label remains FORWARD
   source_run: run43
   source_revision: 3e3d9aea3083e530505a47e596d493afe005719a
@@ -1038,29 +903,30 @@
     action_label: FORWARD
     past_action: FORWARD
     trajectory_type: STRAIGHT
-    v: 6.392965083280896
-    w: -0.03418708421772585
+    v: 6.393
+    w: -0.034
     past_window_sec: 1.4
     horizon_sec: 3.0
     waypoint_period_sec: 0.5
     future_waypoints_ego_frame:
-    - - 3.079712149955377
-      - -0.1672265492427476
-    - - 5.9425444925954345
-      - -0.43360347700524904
-    - - 7.432851240199991
-      - -0.6415944426189157
-    - - 7.433868116370135
-      - -0.6417446035841992
-    - - 7.4339458106850484
-      - -0.6417487496865972
-    - - 7.433960592433978
-      - -0.6417525352568627
+    - - 3.08
+      - -0.17
+    - - 5.94
+      - -0.43
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
+    - - 7.43
+      - -0.64
   observations:
-    FRONT: FRONT shows a crosswalk at an urban junction and a red signal on a pole to the left. Haze reduces
-      distant visibility. No nearby vehicles or pedestrians are clearly visible in FRONT or BACK. FRONT_RIGHT
-      shows a green dumpster beside a building, and BACK shows the residential approach road.
-  caption_short: Ego is moving toward a crosswalk and slowing to a recorded stop.
+    FRONT: Crosswalk at an urban junction; red signal on a pole to the left; haze reducing distant visibility;
+      no nearby vehicles or pedestrians clearly visible.
+    FRONT_RIGHT: Green dumpster beside a building.
+    BACK: Residential approach road; no nearby vehicles or pedestrians clearly visible.
+  caption_short: Ego is slowing down as it approaches a crosswalk.
   caption_detailed: FRONT shows a crosswalk at an urban junction and a red signal on a pole to the left.
     Haze reduces distant visibility. No nearby vehicles or pedestrians are clearly visible in FRONT or
     BACK. FRONT_RIGHT shows a green dumpster beside a building, and BACK shows the residential approach
@@ -1085,39 +951,26 @@
     question: What does BACK show behind ego?
     answer: The residential approach road is visible behind ego.
   - type: prediction
-    question: Does the recorded path turn sharply while approaching the crossing?
-    answer: No. The recorded path is classified as straight, with a small rightward displacement.
+    question: What does ego do as it approaches the crossing in the recording?
+    answer: Ego slows down and stops within about 1.5 seconds.
   - type: prediction
-    question: How will ego's speed change over the next 3 seconds?
-    answer: It slows down to a full stop.
+    question: If ego maintains speed instead of slowing before this crossing, what could become harder?
+    answer: Stopping before a newly detected conflict or an applicable stop line could become harder.
   - type: prediction
-    question: Will ego be stopped or moving at the end of the recorded horizon?
-    answer: It reaches a full stop within about 1.5 s.
-  - type: prediction
-    question: Can the record locate the final stop relative to the crosswalk in FRONT?
-    answer: No. It gives forward displacement but no measured distance to the visible crosswalk.
+    question: If a pedestrian enters the crossing from outside the current view, what conflict could develop?
+    answer: The pedestrian could step into the road in front of ego.
   - type: planning
-    question: What next movement matches the recorded approach?
-    answer: Continue decelerating toward a stop.
+    question: What should ego verify about the red signal on the left before proceeding?
+    answer: Verify whether it controls ego’s lane and obey it if applicable.
   - type: planning
-    question: When does the recorded vehicle reach a stop?
-    answer: It reaches a stop within about 1.5 s.
+    question: How should ego account for the crosswalk during its approach?
+    answer: Keep the crossing under observation and be prepared to yield if a pedestrian enters.
   - type: planning
-    question: What should ego monitor on this approach?
-    answer: Monitor the traffic signals and crossing ahead.
+    question: Why can’t the motion summary tell us exactly where ego stops near the crossing?
+    answer: It tells us how far ego travels, but not how far away the crossing is.
   - type: planning
-    question: Why should FORWARD not be treated as a command to maintain speed?
-    answer: FORWARD describes current motion; the recorded future shows braking to a stop.
-  - type: behaviour
-    question: Is ego currently stopped, creeping, or moving?
-    answer: Ego is currently moving.
-  - type: behaviour
-    question: Is ego currently rotating left, right, or hardly at all?
-    answer: It is rotating right.
-  - type: behaviour
-    question: How does the current action compare with the recent dominant action?
-    answer: The dominant past and current action labels are both FORWARD. This does not establish constant
-      speed.
+    question: How should haze affect this junction approach?
+    answer: Choose an approach speed that leaves time to respond to road users becoming visible.
   - type: behaviour
     question: What is ego doing relative to the crossing now?
-    answer: It is still moving toward the crossing, even though its recorded future reaches a stop.
+    answer: It is still moving toward the crossing and will soon stop in the recording.

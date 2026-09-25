@@ -41,7 +41,7 @@ COMMANDS
       into data/videos/<run_id>/; needs ffmpeg, touches nothing in the run
   annotate [--config YAML] [--h5 path.h5] [--base-url URL] [--run ID]
       [--indices 4,5] [--limit N] [--force] [--regenerate-questions]
-      needs a local server (scripts/serve_annotator_llama.sh); default walk is
+      needs a local server (scripts/serve_annotator.sh); default walk is
       every runs/*.h5, samples 1..n-1 in order. Smoke (spread run43 indices):
       python -m carla_data_pipeline annotate --config configs/annotation/smoke.yaml
   man [usage | config]
