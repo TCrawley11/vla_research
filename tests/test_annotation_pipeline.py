@@ -63,6 +63,17 @@ def test_stop_time_uses_last_moving_segment():
     assert "within about 2 s" in common.speed_profile(points, .5)
 
 
+def test_stop_go_stop_is_not_an_intervening_stop():
+    # start stopped, move, end stopped: not "moving with an intervening stop"
+    points = np.array([[0, 0], [1, 0], [2, 0], [3, 0], [3, 0], [3, 0]])
+    profile = common.speed_profile(points, .5)
+    assert "intervening stop" not in profile
+    assert "pulled away from standstill" in profile
+    assert "decelerating to a full stop" in profile
+    pause_then_go = np.array([[1, 0], [2, 0], [2, 0], [2, 0], [3, 0], [5, 0]])
+    assert "intervening stop" in common.speed_profile(pause_then_go, .5)
+
+
 def test_waypoint_grid_must_match_time_horizon():
     gt = example().ground_truth.model_dump()
     gt['future_waypoints_ego_frame'] = [[0, 0]]

@@ -278,6 +278,14 @@ def speed_profile(waypoints: np.ndarray, period_sec: float) -> str:
         start_step = int(np.flatnonzero(moving)[0])
         return (f"pulling away from standstill after about "
                 f"{start_step * period_sec:g} s, reaching about {last:.1f} m/s")
+    if not moving[0] and not moving[-1]:
+        start_step = int(np.flatnonzero(moving)[0])
+        stop_step = int(np.flatnonzero(moving)[-1]) + 1
+        stop_m = float(waypoints[stop_step - 1][0])
+        return (f"pulled away from standstill after about "
+                f"{start_step * period_sec:g} s, then decelerating to a full stop "
+                f"after about {stop_m:.1f} m forward displacement "
+                f"(within about {stop_step * period_sec:g} s)")
     if not moving.all():
         return (f"moving with an intervening stop, ending at about {last:.1f} m/s")
     # Use both absolute and relative change: a 28% speed drop is not steady.
