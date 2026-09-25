@@ -101,12 +101,11 @@ change it whenever weights change under the same served alias.
 ### Frozen local evaluation
 
 The preparation script exports compact samples from a pinned dataset revision
-without downloading entire HDF5 runs. The repo keeps the 12 example sources;
-the 20 evaluation samples are generated locally into `data/annotation_eval/inputs/eval`
-and are not committed. Example and eval runs stay disjoint. Both variants
-generate their own questions, so this compares the complete pipeline, not
-answer quality on a shared question set. Keep the hosted benchmark for that
-separate comparison.
+without downloading entire HDF5 runs. Example and eval dumps both land under
+`data/annotation_eval/inputs` and are gitignored. Example and eval runs stay
+disjoint. Both variants generate their own questions, so this compares the
+complete pipeline, not answer quality on a shared question set. Keep the
+hosted benchmark for that separate comparison.
 
 ```sh
 # Required before a local eval run (writes holdout samples locally, not to git):
