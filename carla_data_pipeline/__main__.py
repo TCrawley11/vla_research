@@ -38,8 +38,6 @@ def main(argv=None) -> int:
     p_build.add_argument("run", help="run id (e.g. run01) or a path to a .h5")
     p_build.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR,
                          help="where run ids are looked up (default: data/runs)")
-    p_build.add_argument("--motion-config", type=Path,
-                         help="YAML motion-label settings overriding the recorded settings")
     p_build.add_argument("--no-upload", action="store_true",
                          help="skip the automatic stage-3 upload even if the run's "
                               "config enables it")
@@ -115,13 +113,7 @@ def main(argv=None) -> int:
             print(f"no such run file: {path}", file=sys.stderr)
             return 2
         from .build_samples import build_samples
-        motion_config = None
-        if args.motion_config:
-            import yaml
-            from .config_utils.schema import MotionLabelConfig
-            motion_config = MotionLabelConfig.model_validate(
-                yaml.safe_load(args.motion_config.read_text()))
-        build_samples(path, motion_config=motion_config)
+        build_samples(path)
         if args.no_upload:
             return 0
         return _auto_upload(path)

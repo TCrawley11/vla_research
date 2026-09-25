@@ -23,10 +23,17 @@ data/bench/
 data/videos/
 data/annotations/
 data/annotation_test/
-# Evaluation runs are generated; keep the small pinned input fixture reviewable.
+# Evaluation artifacts are generated. Keep example fixtures reviewable; do not
+# commit holdout eval runs.
 data/annotation_eval/**
 !data/annotation_eval/inputs/
 !data/annotation_eval/inputs/**
+data/annotation_eval/inputs/eval/
+data/annotation_eval/inputs/run06.json
+data/annotation_eval/inputs/run07.json
+data/annotation_eval/inputs/run08.json
+data/annotation_eval/inputs/run09.json
+data/annotation_eval/inputs/run10.json
 data/*.log
 
 # local GGUF weights (scripts/serve_annotator.sh downloads these)

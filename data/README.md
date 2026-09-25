@@ -204,20 +204,11 @@ threshold. `CREEPING` is independent of turn direction and of `SLOW_FORWARD`
 `RIGHT_CURVE`. It no longer emits displacement-based `STOPPING`; older files
 may still contain that value. A stationary path is geometrically `STRAIGHT`.
 
-Configure defaults under `capture.motion_labels` in the capture YAML. Capture
-records them as the root JSON attribute `motion_label_config`. To tune existing
-runs without recapture, provide a YAML mapping of motion settings directly:
-
-```sh
-python -m carla_data_pipeline build-samples data/runs/run01.h5 \
-  --motion-config configs/motion_labels.yaml --no-upload
-```
-
-The override file can contain just changed fields (e.g.
-`stationary_enter_sec: 0.6`); omitted fields use model defaults, not the previous
-run settings. Without an override, rebuilding uses recorded settings, or defaults
-for legacy runs. Overrides become the settings for subsequent rebuilds.
-The `/motion` attributes `config_json` and `labeler_version` record the exact
-settings and algorithm version (2). Root `sample_schema_version=2` versions the
-derived layout independently of the raw capture schema. The sidecar records the
-same settings and versions. Rebuilding replaces derived groups only.
+Configure defaults under `capture.motion_labels` in the existing capture YAML
+(`configs/base.yaml`). Capture records them as the root JSON attribute
+`motion_label_config`. Rebuilding uses those recorded settings, or model
+defaults for legacy runs. The `/motion` attributes `config_json` and
+`labeler_version` record the exact settings and algorithm version (2). Root
+`sample_schema_version=2` versions the derived layout independently of the raw
+capture schema. The sidecar records the same settings and versions. Rebuilding
+replaces derived groups only.

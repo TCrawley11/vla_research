@@ -101,13 +101,15 @@ change it whenever weights change under the same served alias.
 ### Frozen local evaluation
 
 The preparation script exports compact samples from a pinned dataset revision
-without downloading entire HDF5 runs. Its 12 example sources and 20 evaluation
-samples come from disjoint runs across five towns. Both variants generate their
-own questions, so this compares the complete pipeline, not answer quality on a
-shared question set. Keep the hosted benchmark for that separate comparison.
+without downloading entire HDF5 runs. The repo keeps the 12 example sources;
+the 20 evaluation samples are generated locally into `data/annotation_eval/inputs/eval`
+and are not committed. Example and eval runs stay disjoint. Both variants
+generate their own questions, so this compares the complete pipeline, not
+answer quality on a shared question set. Keep the hosted benchmark for that
+separate comparison.
 
 ```sh
-# Only needed when preparing or intentionally replacing the frozen inputs:
+# Required before a local eval run (writes holdout samples locally, not to git):
 .venv/bin/python scripts/prepare_annotation_eval.py --revision 3e3d9aea3083e530505a47e596d493afe005719a
 
 # Six varied scenes: slowing, right turn, stopped, highway acceleration,
